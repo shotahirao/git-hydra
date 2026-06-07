@@ -163,7 +163,10 @@ class GitService {
   async getCommitDiff(repoPath: string, commitHash: string): Promise<DiffFile[]> {
     const git = this.getGit(repoPath)
     const diffText = await git.show([commitHash, '--format=', '-p'])
-    return this.parseDiff(diffText)
+    console.log('[gitService] getCommitDiff raw output length:', diffText.length, 'first 200 chars:', diffText.substring(0, 200))
+    const result = this.parseDiff(diffText)
+    console.log('[gitService] getCommitDiff parsed files:', result.length)
+    return result
   }
 
   private parseDiff(diffText: string): DiffFile[] {

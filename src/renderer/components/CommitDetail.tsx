@@ -68,43 +68,51 @@ const CommitDetail: React.FC<CommitDetailProps> = ({ commit, diff, loading }) =>
         <div className="px-3 py-2 bg-gray-100 border-b border-gray-200 text-xs font-semibold text-gray-600">
           Changed Files ({diff.length})
         </div>
-        
-        {diff.length === 0 && (
-          <div className="p-3 text-sm text-gray-500">No changes to display</div>
-        )}
-        
-        {diff.map((file, fileIndex) => (
-          <div key={fileIndex} className="border-b border-gray-200">
-            <div className={`px-3 py-1.5 text-xs font-medium ${
-              file.status === 'added' ? 'bg-green-50 text-green-700' :
-              file.status === 'deleted' ? 'bg-red-50 text-red-700' :
-              'bg-gray-50 text-gray-700'
-            }`}>
-              {file.path}
-              <span className="ml-2 text-xs opacity-60">({file.status})</span>
-            </div>
-            
-            {file.hunks.map((hunk, hunkIndex) => (
-              <div key={hunkIndex} className="text-xs">
-                <div className="px-3 py-0.5 bg-gray-100 text-gray-500 font-mono text-[10px]">
-                  {hunk.lines[0]?.content}
+
+        {loading && diff.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-full">
+            <div className="w-6 h-6 border-3 border-gray-200 border-t-blue-500 rounded-full animate-spin"></div>
+            <p className="mt-2 text-sm text-gray-500">Loading diff...</p>
+          </div>
+        ) : (
+          <>
+            {diff.length === 0 && (
+              <div className="p-3 text-sm text-gray-500">No changes to display</div>
+            )}
+                {diff.map((file, fileIndex) => (
+              <div key={fileIndex} className="border-b border-gray-200">
+                <div className={`px-3 py-1.5 text-xs font-medium ${
+                  file.status === 'added' ? 'bg-green-50 text-green-700' :
+                  file.status === 'deleted' ? 'bg-red-50 text-red-700' :
+                  'bg-gray-50 text-gray-700'
+                }`}>
+                  {file.path}
+                  <span className="ml-2 text-xs opacity-60">({file.status})</span>
                 </div>
-                {hunk.lines.slice(1).map((line, lineIndex) => (
-                  <div
-                    key={lineIndex}
-                    className={`px-3 py-0.5 font-mono whitespace-pre ${
-                      line.type === 'add' ? 'bg-green-50 text-green-800' :
-                      line.type === 'del' ? 'bg-red-50 text-red-800' :
-                      'text-gray-700'
-                    }`}
-                  >
-                    {line.content}
+
+                {file.hunks.map((hunk, hunkIndex) => (
+                  <div key={hunkIndex} className="text-xs">
+                    <div className="px-3 py-0.5 bg-gray-100 text-gray-500 font-mono text-[10px]">
+                      {hunk.lines[0]?.content}
+                    </div>
+                    {hunk.lines.slice(1).map((line, lineIndex) => (
+                      <div
+                        key={lineIndex}
+                        className={`px-3 py-0.5 font-mono whitespace-pre ${
+                          line.type === 'add' ? 'bg-green-50 text-green-800' :
+                          line.type === 'del' ? 'bg-red-50 text-red-800' :
+                          'text-gray-700'
+                        }`}
+                      >
+                        {line.content}
+                      </div>
+                    ))}
                   </div>
                 ))}
               </div>
             ))}
-          </div>
-        ))}
+          </>
+        )}
       </div>
     </div>
   )

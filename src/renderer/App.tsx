@@ -218,12 +218,12 @@ function App(): JSX.Element {
     async (repoPath: string, commit: CommitInfo) => {
       const tab = tabsRef.current.find((t) => t.repoPath === repoPath)
       if (!tab) return
-      updateTab(tab.id, (t) => ({ ...t, selectedCommit: commit }))
+      updateTab(tab.id, (t) => ({ ...t, selectedCommit: commit, loading: true, error: '' }))
       try {
         const diffData = await window.electronAPI.git.getCommitDiff(repoPath, commit.hash)
-        updateTab(tab.id, (t) => ({ ...t, diff: diffData }))
+        updateTab(tab.id, (t) => ({ ...t, diff: diffData, loading: false }))
       } catch (err: any) {
-        updateTab(tab.id, (t) => ({ ...t, error: err.message || 'Failed to load diff' }))
+        updateTab(tab.id, (t) => ({ ...t, error: err.message || 'Failed to load diff', loading: false }))
       }
     },
     [updateTab]

@@ -108,7 +108,10 @@ ipcMain.handle('git:getStagedDiff', async (_, repoPath: string, filePath?: strin
 })
 
 ipcMain.handle('git:getCommitDiff', async (_, repoPath: string, commitHash: string) => {
-  return await gitService.getCommitDiff(repoPath, commitHash)
+  console.log('[IPC] getCommitDiff called for:', repoPath, commitHash)
+  const result = await gitService.getCommitDiff(repoPath, commitHash)
+  console.log('[IPC] getCommitDiff result:', result.length, 'files')
+  return result
 })
 
 ipcMain.handle('git:stage', async (_, repoPath: string, filePaths: string[]) => {
