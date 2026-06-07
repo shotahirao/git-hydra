@@ -366,7 +366,7 @@ function App(): JSX.Element {
       </div>
 
       {/* Bottom: Status Panel */}
-      <div className="h-48 border-t border-gray-200 flex-shrink-0">
+      <div className="h-96 border-t border-gray-200 flex-shrink-0">
         <StatusPanel
           status={status}
           onStage={handleStage}
