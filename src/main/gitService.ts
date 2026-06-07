@@ -4,35 +4,43 @@ import fs from 'node:fs'
 import path from 'node:path'
 
 class GitService {
-  private git: SimpleGit | null = null
-  private repoPath: string = ''
+  private repos: Map<string, SimpleGit> = new Map()
 
-  async openRepo(path: string): Promise<RepoInfo> {
+  private getGit(repoPath: string): SimpleGit {
+    const git = this.repos.get(repoPath)
+    if (!git) throw new Error(`Repository not open: ${repoPath}`)
+    return git
+  }
+
+  async openRepo(repoPath: string): Promise<RepoInfo> {
     try {
-      const git = simpleGit(path)
+      const git = simpleGit(repoPath)
       await git.status()
-      this.git = git
-      this.repoPath = path
+      this.repos.set(repoPath, git)
       const status = await git.status()
       return {
-        path,
+        path: repoPath,
         valid: true,
         currentBranch: status.current ? status.current : undefined,
         ahead: status.ahead,
         behind: status.behind
       }
     } catch (error) {
-      return { path, valid: false }
+      return { path: repoPath, valid: false }
     }
   }
 
-  isRepoOpen(): boolean {
-    return this.git !== null
+  isRepoOpen(repoPath: string): boolean {
+    return this.repos.has(repoPath)
   }
 
-  async getStatus(): Promise<GitStatus> {
-    if (!this.git) throw new Error('No repository open')
-    const status = await this.git.status()
+  closeRepo(repoPath: string): void {
+    this.repos.delete(repoPath)
+  }
+
+  async getStatus(repoPath: string): Promise<GitStatus> {
+    const git = this.getGit(repoPath)
+    const status = await git.status()
     
     const staged: FileStatus[] = []
     const modified: FileStatus[] = []
@@ -87,9 +95,9 @@ class GitService {
     }
   }
 
-  async getBranches(): Promise<BranchInfo[]> {
-    if (!this.git) throw new Error('No repository open')
-    const summary = await this.git.branch(['-a'])
+  async getBranches(repoPath: string): Promise<BranchInfo[]> {
+    const git = this.getGit(repoPath)
+    const summary = await git.branch(['-a'])
     return Object.values(summary.branches).map((branch) => ({
       name: branch.name,
       current: branch.current,
@@ -98,10 +106,10 @@ class GitService {
     }))
   }
 
-  async getLog(maxCount: number = 200): Promise<CommitInfo[]> {
-    if (!this.git) throw new Error('No repository open')
+  async getLog(repoPath: string, maxCount: number = 200): Promise<CommitInfo[]> {
+    const git = this.getGit(repoPath)
     
-    const log = await this.git.log({
+    const log = await git.log({
       maxCount,
       '--all': null,
       format: {
@@ -127,34 +135,34 @@ class GitService {
     }))
   }
 
-  async getDiff(commitHash?: string, filePath?: string): Promise<DiffFile[]> {
-    if (!this.git) throw new Error('No repository open')
+  async getDiff(repoPath: string, commitHash?: string, filePath?: string): Promise<DiffFile[]> {
+    const git = this.getGit(repoPath)
     
     let diffText: string
     if (commitHash) {
-      diffText = await this.git.show([commitHash, '--format=', '-p'])
+      diffText = await git.show([commitHash, '--format=', '-p'])
     } else {
-      diffText = await this.git.diff(['--no-color', filePath || '.'])
+      diffText = await git.diff(['--no-color', filePath || '.'])
     }
     
     return this.parseDiff(diffText)
   }
 
-  async getWorkingDiff(filePath?: string): Promise<DiffFile[]> {
-    if (!this.git) throw new Error('No repository open')
-    const diffText = await this.git.diff(['--no-color', filePath || '.'])
+  async getWorkingDiff(repoPath: string, filePath?: string): Promise<DiffFile[]> {
+    const git = this.getGit(repoPath)
+    const diffText = await git.diff(['--no-color', filePath || '.'])
     return this.parseDiff(diffText)
   }
 
-  async getStagedDiff(filePath?: string): Promise<DiffFile[]> {
-    if (!this.git) throw new Error('No repository open')
-    const diffText = await this.git.diff(['--cached', '--no-color', filePath || '.'])
+  async getStagedDiff(repoPath: string, filePath?: string): Promise<DiffFile[]> {
+    const git = this.getGit(repoPath)
+    const diffText = await git.diff(['--cached', '--no-color', filePath || '.'])
     return this.parseDiff(diffText)
   }
 
-  async getCommitDiff(commitHash: string): Promise<DiffFile[]> {
-    if (!this.git) throw new Error('No repository open')
-    const diffText = await this.git.show([commitHash, '--format=', '-p'])
+  async getCommitDiff(repoPath: string, commitHash: string): Promise<DiffFile[]> {
+    const git = this.getGit(repoPath)
+    const diffText = await git.show([commitHash, '--format=', '-p'])
     return this.parseDiff(diffText)
   }
 
@@ -191,7 +199,7 @@ class GitService {
       } else if (line.startsWith('@@')) {
         if (currentFile) {
           if (currentHunk) currentFile.hunks.push(currentHunk)
-          const match = line.match(/@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@/)
+          const match = line.match(/@@ -(\d+)(?:(\d+))? \+(\d+)(?:(\d+))? @@/)
           if (match) {
             currentHunk = {
               oldStart: parseInt(match[1]),
@@ -225,74 +233,72 @@ class GitService {
     return files
   }
 
-  async stage(filePaths: string[]): Promise<void> {
-    if (!this.git) throw new Error('No repository open')
-    await this.git.add(filePaths)
+  async stage(repoPath: string, filePaths: string[]): Promise<void> {
+    const git = this.getGit(repoPath)
+    await git.add(filePaths)
   }
 
-  async unstage(filePaths: string[]): Promise<void> {
-    if (!this.git) throw new Error('No repository open')
-    await this.git.reset(['HEAD', '--', ...filePaths])
+  async unstage(repoPath: string, filePaths: string[]): Promise<void> {
+    const git = this.getGit(repoPath)
+    await git.reset(['HEAD', '--', ...filePaths])
   }
 
-  async commit(message: string): Promise<string> {
-    if (!this.git) throw new Error('No repository open')
-    const result = await this.git.commit(message)
+  async commit(repoPath: string, message: string): Promise<string> {
+    const git = this.getGit(repoPath)
+    const result = await git.commit(message)
     return result.commit || ''
   }
 
-  private async ensureNoLock(): Promise<void> {
-    if (!this.repoPath) return
-    const lockFile = path.join(this.repoPath, '.git', 'index.lock')
+  private async ensureNoLock(repoPath: string): Promise<void> {
+    const lockFile = path.join(repoPath, '.git', 'index.lock')
     if (fs.existsSync(lockFile)) {
       try {
         fs.unlinkSync(lockFile)
       } catch (e) {
-        // If we can't remove it, throw a clear error
         throw new Error('Git repository is locked by another process. Please close other Git applications and try again.')
       }
     }
   }
 
-  async checkout(target: string, createBranch: boolean = false): Promise<void> {
-    if (!this.git) throw new Error('No repository open')
-    await this.ensureNoLock()
+  async checkout(repoPath: string, target: string, createBranch: boolean = false): Promise<void> {
+    const git = this.getGit(repoPath)
+    await this.ensureNoLock(repoPath)
     if (createBranch) {
-      await this.git.checkoutLocalBranch(target)
+      await git.checkoutLocalBranch(target)
     } else {
-      await this.git.checkout(target)
+      await git.checkout(target)
     }
   }
 
-  async createBranch(branchName: string, from?: string): Promise<void> {
-    if (!this.git) throw new Error('No repository open')
-    await this.ensureNoLock()
-    await this.git.checkoutBranch(branchName, from || 'HEAD')
+  async createBranch(repoPath: string, branchName: string, from?: string): Promise<void> {
+    const git = this.getGit(repoPath)
+    await this.ensureNoLock(repoPath)
+    await git.checkoutBranch(branchName, from || 'HEAD')
   }
 
-  async push(remote?: string, branch?: string): Promise<void> {
-    if (!this.git) throw new Error('No repository open')
-    await this.ensureNoLock()
-    await this.git.push(remote || 'origin', branch || 'HEAD')
+  async push(repoPath: string, remote?: string, branch?: string): Promise<void> {
+    const git = this.getGit(repoPath)
+    await this.ensureNoLock(repoPath)
+    await git.push(remote || 'origin', branch || 'HEAD')
   }
 
-  async pull(remote?: string, branch?: string): Promise<void> {
-    if (!this.git) throw new Error('No repository open')
-    await this.ensureNoLock()
-    await this.git.pull(remote || 'origin', branch || 'HEAD')
+  async pull(repoPath: string, remote?: string, branch?: string): Promise<void> {
+    const git = this.getGit(repoPath)
+    await this.ensureNoLock(repoPath)
+    await git.pull(remote || 'origin', branch || 'HEAD')
   }
 
-  async fetch(remote?: string): Promise<void> {
-    if (!this.git) throw new Error('No repository open')
-    await this.ensureNoLock()
-    await this.git.fetch(remote || 'origin')
+  async fetch(repoPath: string, remote?: string): Promise<void> {
+    const git = this.getGit(repoPath)
+    await this.ensureNoLock(repoPath)
+    await git.fetch(remote || 'origin')
   }
 
-  async merge(branchName: string): Promise<string> {
-    if (!this.git) throw new Error('No repository open')
-    await this.ensureNoLock()
+  async merge(repoPath: string, branchName: string): Promise<string> {
+    const git = this.getGit(repoPath)
+    await this.ensureNoLock(repoPath)
     try {
-      const result = await this.git.merge([branchName])
+      const result = await git.merge([branchName])
       return `Merged ${branchName}: ${result}`
     } catch (error: any) {
       if (error.message && error.message.includes('CONFLICT')) {
@@ -302,28 +308,28 @@ class GitService {
     }
   }
 
-  async rebase(branchName: string): Promise<string> {
-    if (!this.git) throw new Error('No repository open')
-    await this.ensureNoLock()
+  async rebase(repoPath: string, branchName: string): Promise<string> {
+    const git = this.getGit(repoPath)
+    await this.ensureNoLock(repoPath)
     try {
-      await this.git.rebase([branchName])
+      await git.rebase([branchName])
       return `Rebased onto ${branchName}`
     } catch (error: any) {
       throw new Error(`Rebase failed: ${error.message}`)
     }
   }
 
-  async deleteBranch(branchName: string, force: boolean = false): Promise<void> {
-    if (!this.git) throw new Error('No repository open')
-    await this.ensureNoLock()
+  async deleteBranch(repoPath: string, branchName: string, force: boolean = false): Promise<void> {
+    const git = this.getGit(repoPath)
+    await this.ensureNoLock(repoPath)
     const options = force ? ['-D', branchName] : ['-d', branchName]
-    await this.git.branch(options)
+    await git.branch(options)
   }
 
-  async renameBranch(oldName: string, newName: string): Promise<void> {
-    if (!this.git) throw new Error('No repository open')
-    await this.ensureNoLock()
-    await this.git.branch(['-m', oldName, newName])
+  async renameBranch(repoPath: string, oldName: string, newName: string): Promise<void> {
+    const git = this.getGit(repoPath)
+    await this.ensureNoLock(repoPath)
+    await git.branch(['-m', oldName, newName])
   }
 }
 

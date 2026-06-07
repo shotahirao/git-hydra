@@ -3,12 +3,13 @@ import { GitStatus, FileStatus, DiffFile, DiffHunk, DiffLine } from '@git-types/
 
 interface StatusPanelProps {
   status: GitStatus | null
+  loading: boolean
   onStage: (filePaths: string[]) => void
   onUnstage: (filePaths: string[]) => void
   onCommit: (message: string) => void
 }
 
-const StatusPanel: React.FC<StatusPanelProps> = ({ status, onStage, onUnstage, onCommit }) => {
+const StatusPanel: React.FC<StatusPanelProps> = ({ status, loading, onStage, onUnstage, onCommit }) => {
   const [commitMessage, setCommitMessage] = useState('')
   const [selectedFile, setSelectedFile] = useState<string | null>(null)
   const [selectedFileIsStaged, setSelectedFileIsStaged] = useState(false)
@@ -65,8 +66,15 @@ const StatusPanel: React.FC<StatusPanelProps> = ({ status, onStage, onUnstage, o
 
   if (!status) {
     return (
-      <div className="flex items-center justify-center h-full text-gray-400 text-sm">
-        No repository open
+      <div className="flex flex-col items-center justify-center h-full">
+        {loading ? (
+          <>
+            <div className="w-6 h-6 border-3 border-gray-200 border-t-blue-500 rounded-full animate-spin"></div>
+            <p className="mt-2 text-sm text-gray-500">Loading repository data...</p>
+          </>
+        ) : (
+          <span className="text-gray-400 text-sm">No repository open</span>
+        )}
       </div>
     )
   }

@@ -4,17 +4,25 @@ import { CommitInfo, DiffFile } from '@git-types/git'
 interface CommitDetailProps {
   commit: CommitInfo | null
   diff: DiffFile[]
+  loading: boolean
 }
 
-const CommitDetail: React.FC<CommitDetailProps> = ({ commit, diff }) => {
+const CommitDetail: React.FC<CommitDetailProps> = ({ commit, diff, loading }) => {
   if (!commit) {
     return (
       <div className="flex flex-col h-full">
         <div className="px-3 py-2 bg-gray-100 border-b border-gray-200 font-semibold text-sm text-gray-700">
           Details
         </div>
-        <div className="flex-1 flex items-center justify-center text-gray-400 text-sm">
-          Select a commit to view details
+        <div className="flex-1 flex flex-col items-center justify-center">
+          {loading ? (
+            <>
+              <div className="w-6 h-6 border-3 border-gray-200 border-t-blue-500 rounded-full animate-spin"></div>
+              <p className="mt-2 text-sm text-gray-500">Loading commits...</p>
+            </>
+          ) : (
+            <span className="text-gray-400 text-sm">Select a commit to view details</span>
+          )}
         </div>
       </div>
     )

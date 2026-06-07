@@ -29,33 +29,34 @@ test.describe('CommitGraph Scroll', () => {
   })
 
   test('コミット選択時にスクロールされる', async ({ page }) => {
-    await page.goto('http://localhost:5173')
-    
-    // テスト用リポジトリを開く（IPCをモック）
-    await page.evaluate((path) => {
+    // git log order: newest first
+    const commits = []
+    for (let i = 49; i >= 0; i--) {
+      commits.push({
+        hash: `hash${i.toString().padStart(2, '0')}`,
+        message: `Commit ${i}`,
+        author_name: 'Test',
+        author_email: 'test@test.com',
+        date: '2024-01-01T00:00:00Z',
+        parents: i === 0 ? [] : [`hash${(i-1).toString().padStart(2, '0')}`],
+        refs: i === 49 ? 'HEAD -> main' : ''
+      })
+    }
+
+    await page.addInitScript(({ repoPath, commits }) => {
       // @ts-ignore
       window.electronAPI = {
-        openDirectory: async () => path,
+        openDirectory: async () => repoPath,
+        config: {
+          getRecentRepos: async () => [],
+          addRecentRepo: async () => {},
+          removeRecentRepo: async () => {},
+          getSessionTabs: async () => [],
+          saveSessionTabs: async () => {}
+        },
         git: {
           openRepo: async () => ({ valid: true, currentBranch: 'main' }),
-          getBranches: async () => [
-            { name: 'main', current: true, label: 'main' }
-          ],
-          getLog: async () => {
-            const commits = []
-            for (let i = 0; i < 50; i++) {
-              commits.push({
-                hash: `hash${i.toString().padStart(2, '0')}`,
-                message: `Commit ${i}`,
-                author_name: 'Test',
-                author_email: 'test@test.com',
-                date: '2024-01-01T00:00:00Z',
-                parents: i === 0 ? [] : [`hash${(i-1).toString().padStart(2, '0')}`],
-                refs: i === 49 ? 'HEAD -> main' : ''
-              })
-            }
-            return commits
-          },
+          closeRepo: async () => {},
           getStatus: async () => ({
             current: 'main',
             ahead: 0,
@@ -65,37 +66,61 @@ test.describe('CommitGraph Scroll', () => {
             untracked: [],
             conflicted: []
           }),
-          getCommitDiff: async () => []
+          getBranches: async () => [
+            { name: 'main', current: true, label: 'main' }
+          ],
+          getLog: async () => commits,
+          getCommitDiff: async () => [],
+          stage: async () => {},
+          unstage: async () => {},
+          commit: async () => '',
+          checkout: async () => {},
+          createBranch: async () => {},
+          push: async () => {},
+          pull: async () => {},
+          fetch: async () => {},
+          merge: async () => '',
+          rebase: async () => '',
+          deleteBranch: async () => {},
+          renameBranch: async () => {}
         }
       }
-    }, repoPath)
+    }, { repoPath, commits })
+    
+    await page.goto('http://localhost:5173')
     
     // Open Repositoryボタンをクリック
     await page.click('text=Open Repository')
     
     // リポジトリが開くのを待つ
     await page.waitForSelector('text=Commit History')
-    
-    // 初期状態：HEADコミット（最後のコミット、index 49）が選択されている
-    // スクロール位置を確認
-    const scrollContainer = page.locator('.overflow-y-auto').first()
+
+    // Wait for React render + rAF scroll
+    await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))))
+    await page.waitForTimeout(200)
+
+    // visible なコミット要素から祖先のスクロールコンテナを特定
+    const commitElement = page.locator('#commit-row-hash49:visible')
+    const scrollContainer = commitElement.locator('xpath=ancestor::*[contains(@class, "overflow-y-auto")]')
+
+    // 初期状態：HEADコミット（hash49, newest）が選択されている
+    // hash49 is at the top of the list, so scrollTop should be 0
     const initialScrollTop = await scrollContainer.evaluate(el => el.scrollTop)
-    
+
     console.log('Initial scrollTop:', initialScrollTop)
-    
-    // スクロールが発生していることを確認（0より大きい）
-    // 最後のコミットが中央に表示されるようにスクロールされるはず
-    expect(initialScrollTop).toBeGreaterThan(0)
-    
-    // 最初のコミットをクリック
-    const firstCommit = page.locator('#commit-row-hash00')
-    await firstCommit.click()
-    
-    // スクロール位置が0に近くなることを確認
-    await page.waitForTimeout(500)
+    expect(initialScrollTop).toBe(0)
+
+    // 最後のコミット（hash00, oldest at bottom）をクリック
+    const lastCommit = page.locator('#commit-row-hash00:visible')
+    await lastCommit.click()
+
+    // Wait for React render + rAF scroll
+    await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))))
+    await page.waitForTimeout(200)
     const afterClickScrollTop = await scrollContainer.evaluate(el => el.scrollTop)
     console.log('After click scrollTop:', afterClickScrollTop)
-    
-    expect(afterClickScrollTop).toBeLessThan(initialScrollTop)
+
+    // 下にスクロールされることを確認
+    expect(afterClickScrollTop).toBeGreaterThan(initialScrollTop)
   })
 })

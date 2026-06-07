@@ -5,6 +5,7 @@ interface CommitGraphProps {
   commits: CommitInfo[]
   selectedCommit: CommitInfo | null
   currentBranch?: string
+  loading: boolean
   onCommitSelect: (commit: CommitInfo) => void
 }
 
@@ -32,7 +33,7 @@ function getBranchColor(index: number): string {
   return BRANCH_COLORS[index % BRANCH_COLORS.length]
 }
 
-const CommitGraph: React.FC<CommitGraphProps> = ({ commits, selectedCommit, currentBranch, onCommitSelect }) => {
+const CommitGraph: React.FC<CommitGraphProps> = ({ commits, selectedCommit, currentBranch, loading, onCommitSelect }) => {
   const { layout, maxColumn } = useMemo(() => {
     const columnMap = new Map<string, number>()
     const columns: (string | null)[] = []
@@ -181,9 +182,10 @@ const CommitGraph: React.FC<CommitGraphProps> = ({ commits, selectedCommit, curr
     if (!selectedCommit?.hash || !scrollContainerRef.current) return
 
     const scroll = () => {
-      const element = document.getElementById(`commit-row-${selectedCommit.hash}`)
       const container = scrollContainerRef.current
-      if (element && container) {
+      if (!container) return
+      const element = container.querySelector(`#commit-row-${selectedCommit.hash}`) as HTMLElement | null
+      if (element) {
         const containerRect = container.getBoundingClientRect()
         const elementRect = element.getBoundingClientRect()
         const relativeTop = elementRect.top - containerRect.top + container.scrollTop
@@ -192,7 +194,7 @@ const CommitGraph: React.FC<CommitGraphProps> = ({ commits, selectedCommit, curr
 
         container.scrollTo({
           top: Math.max(0, relativeTop - containerHeight / 2 + elementHeight / 2),
-          behavior: 'smooth'
+          behavior: 'auto'
         })
       }
     }
@@ -202,6 +204,26 @@ const CommitGraph: React.FC<CommitGraphProps> = ({ commits, selectedCommit, curr
       requestAnimationFrame(scroll)
     })
   }, [selectedCommit?.hash, commits.length])
+
+  if (commits.length === 0) {
+    return (
+      <div className="flex flex-col h-full">
+        <div className="px-3 py-2 bg-gray-100 border-b border-gray-200 font-semibold text-sm text-gray-700">
+          Commit History
+        </div>
+        <div className="flex-1 flex flex-col items-center justify-center">
+          {loading ? (
+            <>
+              <div className="w-6 h-6 border-3 border-gray-200 border-t-blue-500 rounded-full animate-spin"></div>
+              <p className="mt-2 text-sm text-gray-500">Loading commits...</p>
+            </>
+          ) : (
+            <span className="text-gray-400 text-sm">No commits</span>
+          )}
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="flex flex-col h-full">
@@ -321,6 +343,7 @@ const CommitGraph: React.FC<CommitGraphProps> = ({ commits, selectedCommit, curr
               <button
                 key={item.commit.hash}
                 id={`commit-row-${item.commit.hash}`}
+                data-selected={selectedCommit?.hash === item.commit.hash ? 'true' : undefined}
                 onClick={() => onCommitSelect(item.commit)}
                 className={`w-full text-left flex items-center hover:bg-gray-100 transition border-b border-gray-50 relative pl-0 ${
                   selectedCommit?.hash === item.commit.hash

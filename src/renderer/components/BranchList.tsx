@@ -4,6 +4,7 @@ import { BranchInfo } from '@git-types/git'
 interface BranchListProps {
   branches: BranchInfo[]
   currentBranch?: string
+  loading: boolean
   onCheckout: (branchName: string) => void
   onCreateBranch: (branchName: string) => void
   onMerge?: (branchName: string) => void
@@ -15,6 +16,7 @@ interface BranchListProps {
 const BranchList: React.FC<BranchListProps> = ({
   branches,
   currentBranch,
+  loading,
   onCheckout,
   onCreateBranch,
   onMerge,
@@ -153,14 +155,21 @@ const BranchList: React.FC<BranchListProps> = ({
       </div>
 
       <div className="flex-1 overflow-y-auto">
-        {/* Local Branches */}
-        <div className="px-2 py-1 text-xs text-gray-500 font-medium uppercase tracking-wider">
-          Local ({localBranches.length})
-        </div>
-        {localBranches.length === 0 && searchQuery && (
-          <div className="px-3 py-2 text-xs text-gray-400">No matching local branches</div>
-        )}
-        {localBranches.map((branch) => (
+        {loading && branches.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-full">
+            <div className="w-6 h-6 border-3 border-gray-200 border-t-blue-500 rounded-full animate-spin"></div>
+            <p className="mt-2 text-sm text-gray-500">Loading branches...</p>
+          </div>
+        ) : (
+          <>
+            {/* Local Branches */}
+            <div className="px-2 py-1 text-xs text-gray-500 font-medium uppercase tracking-wider">
+              Local ({localBranches.length})
+            </div>
+            {localBranches.length === 0 && searchQuery && (
+              <div className="px-3 py-2 text-xs text-gray-400">No matching local branches</div>
+            )}
+            {localBranches.map((branch) => (
           <button
             key={branch.name}
             onClick={() => onCheckout(branch.name)}
@@ -206,6 +215,8 @@ const BranchList: React.FC<BranchListProps> = ({
                 <span className="truncate">{branch.label}</span>
               </button>
             ))}
+          </>
+        )}
           </>
         )}
       </div>

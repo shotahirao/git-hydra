@@ -1,35 +1,115 @@
 import { test, expect } from '@playwright/test'
 
-test.describe('GitDragon E2E Tests', () => {
+test.describe('GitHydra E2E Tests', () => {
   test('アプリが起動し、リポジトリ選択画面が表示される', async ({ page }) => {
+    await page.addInitScript(() => {
+      // @ts-ignore
+      window.electronAPI = {
+        openDirectory: async () => null,
+        config: {
+          getRecentRepos: async () => [],
+          addRecentRepo: async () => {},
+          removeRecentRepo: async () => {},
+          getSessionTabs: async () => [],
+          saveSessionTabs: async () => {}
+        },
+        git: {
+          openRepo: async () => ({ valid: true, currentBranch: 'main' }),
+          closeRepo: async () => {},
+          getStatus: async () => ({}),
+          getBranches: async () => [],
+          getLog: async () => [],
+          getCommitDiff: async () => [],
+          stage: async () => {},
+          unstage: async () => {},
+          commit: async () => '',
+          checkout: async () => {},
+          createBranch: async () => {},
+          push: async () => {},
+          pull: async () => {},
+          fetch: async () => {},
+          merge: async () => '',
+          rebase: async () => '',
+          deleteBranch: async () => {},
+          renameBranch: async () => {}
+        }
+      }
+    })
+
     await page.goto('http://localhost:5173')
-    
+
     // 初期画面の確認
-    await expect(page.locator('text=GitDragon')).toBeVisible()
+    await expect(page.locator('text=GitHydra')).toBeVisible()
     await expect(page.locator('text=Open Repository')).toBeVisible()
   })
 
-  test('リポジトリを開いた後、HEADコミットが選択されている', async ({ page }) => {
+  test('最近使ったリポジトリが表示される', async ({ page }) => {
+    await page.addInitScript(() => {
+      // @ts-ignore
+      window.electronAPI = {
+        openDirectory: async () => null,
+        config: {
+          getRecentRepos: async () => ['/Users/test/project-a', '/Users/test/project-b'],
+          addRecentRepo: async () => {},
+          removeRecentRepo: async () => {},
+          getSessionTabs: async () => [],
+          saveSessionTabs: async () => {}
+        },
+        git: {
+          openRepo: async () => ({ valid: true, currentBranch: 'main' }),
+          closeRepo: async () => {},
+          getStatus: async () => ({}),
+          getBranches: async () => [],
+          getLog: async () => [],
+          getCommitDiff: async () => [],
+          stage: async () => {},
+          unstage: async () => {},
+          commit: async () => '',
+          checkout: async () => {},
+          createBranch: async () => {},
+          push: async () => {},
+          pull: async () => {},
+          fetch: async () => {},
+          merge: async () => '',
+          rebase: async () => '',
+          deleteBranch: async () => {},
+          renameBranch: async () => {}
+        }
+      }
+    })
+
     await page.goto('http://localhost:5173')
-    
-    // Open Repositoryボタンをクリック
-    await page.click('text=Open Repository')
-    
-    // ダイアログが開くのを待つ（Electronのネイティブダイアログはテスト不可だが、
-    // IPCをモックするか、テスト用リポジトリを事前に準備する必要がある）
-    // このテストは手動での確認用
+
+    // 最近使ったリポジトリが表示されるのを待つ
+    await expect(page.locator('text=Recent Repositories')).toBeVisible()
+    await expect(page.getByText('project-a', { exact: true })).toBeVisible()
+    await expect(page.getByText('project-b', { exact: true })).toBeVisible()
   })
 
-  test('コミットをクリックすると詳細が表示される', async ({ page }) => {
-    await page.goto('http://localhost:5173')
-    
-    // テスト用：IPCをモックしてリポジトリを開く
-    await page.evaluate(() => {
+  test('リポジトリを開くとタブが表示される', async ({ page }) => {
+    await page.addInitScript(() => {
       // @ts-ignore
       window.electronAPI = {
         openDirectory: async () => '/tmp/test-repo',
+        config: {
+          getRecentRepos: async () => [],
+          addRecentRepo: async () => {},
+          removeRecentRepo: async () => {},
+          getSessionTabs: async () => [],
+          saveSessionTabs: async () => {}
+        },
         git: {
           openRepo: async () => ({ valid: true, currentBranch: 'main' }),
+          closeRepo: async () => {},
+          getStatus: async () => ({
+            current: 'main',
+            ahead: 0,
+            behind: 0,
+            staged: [],
+            modified: [],
+            untracked: [],
+            conflicted: []
+          }),
           getBranches: async () => [{ name: 'main', current: true, label: 'main' }],
           getLog: async () => [
             {
@@ -42,6 +122,47 @@ test.describe('GitDragon E2E Tests', () => {
               refs: 'HEAD -> main'
             }
           ],
+          getCommitDiff: async () => [],
+          stage: async () => {},
+          unstage: async () => {},
+          commit: async () => '',
+          checkout: async () => {},
+          createBranch: async () => {},
+          push: async () => {},
+          pull: async () => {},
+          fetch: async () => {},
+          merge: async () => '',
+          rebase: async () => '',
+          deleteBranch: async () => {},
+          renameBranch: async () => {}
+        }
+      }
+    })
+
+    await page.goto('http://localhost:5173')
+
+    // Open Repositoryボタンをクリック
+    await page.click('text=Open Repository')
+
+    // タブが表示されるのを待つ（exact matchでタブ名のみを探す）
+    await expect(page.getByText('test-repo', { exact: true })).toBeVisible()
+  })
+
+  test('コミットをクリックすると詳細が表示される', async ({ page }) => {
+    await page.addInitScript(() => {
+      // @ts-ignore
+      window.electronAPI = {
+        openDirectory: async () => '/tmp/test-repo',
+        config: {
+          getRecentRepos: async () => [],
+          addRecentRepo: async () => {},
+          removeRecentRepo: async () => {},
+          getSessionTabs: async () => [],
+          saveSessionTabs: async () => {}
+        },
+        git: {
+          openRepo: async () => ({ valid: true, currentBranch: 'main' }),
+          closeRepo: async () => {},
           getStatus: async () => ({
             current: 'main',
             ahead: 0,
@@ -51,13 +172,47 @@ test.describe('GitDragon E2E Tests', () => {
             untracked: [],
             conflicted: []
           }),
-          getCommitDiff: async () => []
+          getBranches: async () => [{ name: 'main', current: true, label: 'main' }],
+          getLog: async () => [
+            {
+              hash: 'abc123',
+              message: 'Test commit',
+              author_name: 'Test User',
+              author_email: 'test@example.com',
+              date: '2024-01-01T00:00:00Z',
+              parents: [],
+              refs: 'HEAD -> main'
+            }
+          ],
+          getCommitDiff: async () => [],
+          stage: async () => {},
+          unstage: async () => {},
+          commit: async () => '',
+          checkout: async () => {},
+          createBranch: async () => {},
+          push: async () => {},
+          pull: async () => {},
+          fetch: async () => {},
+          merge: async () => '',
+          rebase: async () => '',
+          deleteBranch: async () => {},
+          renameBranch: async () => {}
         }
       }
     })
-    
-    // IPCモック後、自動的にリポジトリが開かれるはず
-    // HEADコミットが選択されていることを確認
-    await expect(page.locator('[data-selected="true"]')).toBeVisible()
+
+    await page.goto('http://localhost:5173')
+
+    // Open Repositoryボタンをクリック
+    await page.click('text=Open Repository')
+
+    // タブが表示されるのを待つ
+    await expect(page.getByText('test-repo', { exact: true })).toBeVisible()
+
+    // レンダリング完了を待つ
+    await page.waitForTimeout(1000)
+
+    // HEADコミットが選択されていることを確認（commit-selectedクラスを持つ要素が表示されている）
+    await expect(page.locator('.commit-selected')).toBeVisible()
   })
 })

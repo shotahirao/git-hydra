@@ -2,6 +2,7 @@ import { app, BrowserWindow, ipcMain, dialog, shell } from 'electron'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 import { gitService } from './main/gitService'
+import { configService } from './main/configService'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -26,11 +27,7 @@ function createWindow(): void {
       nodeIntegration: false
     },
     titleBarStyle: 'hiddenInset',
-    show: false
-  })
-
-  win.on('ready-to-show', () => {
-    win?.show()
+    show: true
   })
 
   win.webContents.setWindowOpenHandler((details) => {
@@ -39,9 +36,12 @@ function createWindow(): void {
   })
 
   if (process.env['VITE_DEV_SERVER_URL']) {
+    console.log('Loading dev server URL:', VITE_DEV_SERVER_URL)
     win.loadURL(VITE_DEV_SERVER_URL)
   } else {
-    win.loadFile(path.join(RENDERER_DIST, 'index.html'))
+    const htmlPath = path.join(RENDERER_DIST, 'index.html')
+    console.log('Loading file:', htmlPath)
+    win.loadFile(htmlPath)
   }
 }
 
@@ -53,84 +53,110 @@ ipcMain.handle('dialog:openDirectory', async () => {
   return result.canceled ? null : result.filePaths[0]
 })
 
-ipcMain.handle('git:openRepo', async (_, path: string) => {
-  return await gitService.openRepo(path)
+// Config IPC Handlers
+ipcMain.handle('config:getRecentRepos', async () => {
+  return configService.getRecentRepos()
 })
 
-ipcMain.handle('git:getStatus', async () => {
-  return await gitService.getStatus()
+ipcMain.handle('config:addRecentRepo', async (_, repoPath: string) => {
+  configService.addRecentRepo(repoPath)
 })
 
-ipcMain.handle('git:getBranches', async () => {
-  return await gitService.getBranches()
+ipcMain.handle('config:removeRecentRepo', async (_, repoPath: string) => {
+  configService.removeRecentRepo(repoPath)
 })
 
-ipcMain.handle('git:getLog', async (_, maxCount?: number) => {
-  return await gitService.getLog(maxCount)
+ipcMain.handle('config:getSessionTabs', async () => {
+  return configService.getSessionTabs()
 })
 
-ipcMain.handle('git:getDiff', async (_, commitHash?: string, filePath?: string) => {
-  return await gitService.getDiff(commitHash, filePath)
+ipcMain.handle('config:saveSessionTabs', async (_, tabPaths: string[]) => {
+  configService.saveSessionTabs(tabPaths)
 })
 
-ipcMain.handle('git:getWorkingDiff', async (_, filePath?: string) => {
-  return await gitService.getWorkingDiff(filePath)
+// Git IPC Handlers
+ipcMain.handle('git:openRepo', async (_, repoPath: string) => {
+  return await gitService.openRepo(repoPath)
 })
 
-ipcMain.handle('git:getStagedDiff', async (_, filePath?: string) => {
-  return await gitService.getStagedDiff(filePath)
+ipcMain.handle('git:closeRepo', async (_, repoPath: string) => {
+  gitService.closeRepo(repoPath)
 })
 
-ipcMain.handle('git:getCommitDiff', async (_, commitHash: string) => {
-  return await gitService.getCommitDiff(commitHash)
+ipcMain.handle('git:getStatus', async (_, repoPath: string) => {
+  return await gitService.getStatus(repoPath)
 })
 
-ipcMain.handle('git:stage', async (_, filePaths: string[]) => {
-  return await gitService.stage(filePaths)
+ipcMain.handle('git:getBranches', async (_, repoPath: string) => {
+  return await gitService.getBranches(repoPath)
 })
 
-ipcMain.handle('git:unstage', async (_, filePaths: string[]) => {
-  return await gitService.unstage(filePaths)
+ipcMain.handle('git:getLog', async (_, repoPath: string, maxCount?: number) => {
+  return await gitService.getLog(repoPath, maxCount)
 })
 
-ipcMain.handle('git:commit', async (_, message: string) => {
-  return await gitService.commit(message)
+ipcMain.handle('git:getDiff', async (_, repoPath: string, commitHash?: string, filePath?: string) => {
+  return await gitService.getDiff(repoPath, commitHash, filePath)
 })
 
-ipcMain.handle('git:checkout', async (_, target: string, createBranch?: boolean) => {
-  return await gitService.checkout(target, createBranch)
+ipcMain.handle('git:getWorkingDiff', async (_, repoPath: string, filePath?: string) => {
+  return await gitService.getWorkingDiff(repoPath, filePath)
 })
 
-ipcMain.handle('git:createBranch', async (_, branchName: string, from?: string) => {
-  return await gitService.createBranch(branchName, from)
+ipcMain.handle('git:getStagedDiff', async (_, repoPath: string, filePath?: string) => {
+  return await gitService.getStagedDiff(repoPath, filePath)
 })
 
-ipcMain.handle('git:push', async (_, remote?: string, branch?: string) => {
-  return await gitService.push(remote, branch)
+ipcMain.handle('git:getCommitDiff', async (_, repoPath: string, commitHash: string) => {
+  return await gitService.getCommitDiff(repoPath, commitHash)
 })
 
-ipcMain.handle('git:pull', async (_, remote?: string, branch?: string) => {
-  return await gitService.pull(remote, branch)
+ipcMain.handle('git:stage', async (_, repoPath: string, filePaths: string[]) => {
+  return await gitService.stage(repoPath, filePaths)
 })
 
-ipcMain.handle('git:fetch', async (_, remote?: string) => {
-  return await gitService.fetch(remote)
+ipcMain.handle('git:unstage', async (_, repoPath: string, filePaths: string[]) => {
+  return await gitService.unstage(repoPath, filePaths)
 })
 
-ipcMain.handle('git:merge', async (_, branchName: string) => {
-  return await gitService.merge(branchName)
+ipcMain.handle('git:commit', async (_, repoPath: string, message: string) => {
+  return await gitService.commit(repoPath, message)
 })
 
-ipcMain.handle('git:rebase', async (_, branchName: string) => {
-  return await gitService.rebase(branchName)
+ipcMain.handle('git:checkout', async (_, repoPath: string, target: string, createBranch?: boolean) => {
+  return await gitService.checkout(repoPath, target, createBranch)
 })
 
-ipcMain.handle('git:deleteBranch', async (_, branchName: string, force?: boolean) => {
-  return await gitService.deleteBranch(branchName, force)
+ipcMain.handle('git:createBranch', async (_, repoPath: string, branchName: string, from?: string) => {
+  return await gitService.createBranch(repoPath, branchName, from)
 })
 
-ipcMain.handle('git:renameBranch', async (_, oldName: string, newName: string) => {
-  return await gitService.renameBranch(oldName, newName)
+ipcMain.handle('git:push', async (_, repoPath: string, remote?: string, branch?: string) => {
+  return await gitService.push(repoPath, remote, branch)
+})
+
+ipcMain.handle('git:pull', async (_, repoPath: string, remote?: string, branch?: string) => {
+  return await gitService.pull(repoPath, remote, branch)
+})
+
+ipcMain.handle('git:fetch', async (_, repoPath: string, remote?: string) => {
+  return await gitService.fetch(repoPath, remote)
+})
+
+ipcMain.handle('git:merge', async (_, repoPath: string, branchName: string) => {
+  return await gitService.merge(repoPath, branchName)
+})
+
+ipcMain.handle('git:rebase', async (_, repoPath: string, branchName: string) => {
+  return await gitService.rebase(repoPath, branchName)
+})
+
+ipcMain.handle('git:deleteBranch', async (_, repoPath: string, branchName: string, force?: boolean) => {
+  return await gitService.deleteBranch(repoPath, branchName, force)
+})
+
+ipcMain.handle('git:renameBranch', async (_, repoPath: string, oldName: string, newName: string) => {
+  return await gitService.renameBranch(repoPath, oldName, newName)
 })
 
 app.on('window-all-closed', () => {
@@ -143,6 +169,23 @@ app.on('window-all-closed', () => {
 app.on('activate', () => {
   if (BrowserWindow.getAllWindows().length === 0) {
     createWindow()
+  }
+})
+
+// Save session tabs on quit
+app.on('before-quit', async () => {
+  const windows = BrowserWindow.getAllWindows()
+  for (const w of windows) {
+    try {
+      const tabs: string[] = await w.webContents.executeJavaScript(
+        'window.__sessionTabs || []'
+      )
+      if (tabs.length > 0) {
+        configService.saveSessionTabs(tabs)
+      }
+    } catch (e) {
+      // ignore
+    }
   }
 })
 
