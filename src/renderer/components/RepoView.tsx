@@ -228,6 +228,7 @@ const RepoView: React.FC<RepoViewProps> = ({
         <StatusPanel
           status={status}
           loading={loading}
+          repoPath={repoPath}
           onStage={handleStage}
           onUnstage={handleUnstage}
           onCommit={handleCommit}

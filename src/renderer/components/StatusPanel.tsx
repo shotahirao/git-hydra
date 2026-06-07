@@ -4,12 +4,13 @@ import { GitStatus, FileStatus, DiffFile, DiffHunk, DiffLine } from '@git-types/
 interface StatusPanelProps {
   status: GitStatus | null
   loading: boolean
+  repoPath: string
   onStage: (filePaths: string[]) => void
   onUnstage: (filePaths: string[]) => void
   onCommit: (message: string) => void
 }
 
-const StatusPanel: React.FC<StatusPanelProps> = ({ status, loading, onStage, onUnstage, onCommit }) => {
+const StatusPanel: React.FC<StatusPanelProps> = ({ status, loading, repoPath, onStage, onUnstage, onCommit }) => {
   const [commitMessage, setCommitMessage] = useState('')
   const [selectedFile, setSelectedFile] = useState<string | null>(null)
   const [selectedFileIsStaged, setSelectedFileIsStaged] = useState(false)
@@ -27,10 +28,10 @@ const StatusPanel: React.FC<StatusPanelProps> = ({ status, loading, onStage, onU
     const loadDiff = async () => {
       try {
         if (selectedFileIsStaged) {
-          const diffData = await window.electronAPI.git.getStagedDiff(selectedFile)
+          const diffData = await window.electronAPI.git.getStagedDiff(repoPath, selectedFile)
           setDiff(diffData)
         } else {
-          const diffData = await window.electronAPI.git.getWorkingDiff(selectedFile)
+          const diffData = await window.electronAPI.git.getWorkingDiff(repoPath, selectedFile)
           setDiff(diffData)
         }
       } catch (err) {
