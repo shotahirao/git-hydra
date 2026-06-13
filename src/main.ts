@@ -1,6 +1,7 @@
 import { app, BrowserWindow, ipcMain, dialog, shell } from 'electron'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
+import fs from 'node:fs'
 import { gitService } from './main/gitService'
 import { configService } from './main/configService'
 
@@ -15,7 +16,22 @@ app.commandLine.appendSwitch('disable-software-rasterizer')
 
 let win: BrowserWindow | null
 
+function getResourcePath(relativePath: string): string {
+  if (app.isPackaged) {
+    return path.join(process.resourcesPath, relativePath)
+  }
+
+  // In dev/preview, prefer the built output path when available;
+  // otherwise fall back to the project root (e.g. preview run directly).
+  const outPath = path.join(__dirname, '../', relativePath)
+  if (fs.existsSync(outPath)) {
+    return outPath
+  }
+  return path.join(process.cwd(), relativePath)
+}
+
 function createWindow(): void {
+  const iconPath = getResourcePath('resources/icon.png')
   win = new BrowserWindow({
     width: 1400,
     height: 900,
@@ -27,7 +43,8 @@ function createWindow(): void {
       nodeIntegration: false
     },
     titleBarStyle: 'hiddenInset',
-    show: true
+    show: true,
+    icon: iconPath
   })
 
   win.webContents.setWindowOpenHandler((details) => {
@@ -192,4 +209,10 @@ app.on('before-quit', async () => {
   }
 })
 
-app.whenReady().then(createWindow)
+app.whenReady().then(() => {
+  if (process.platform === 'darwin') {
+    const iconPath = getResourcePath('resources/icon.png')
+    app.dock.setIcon(iconPath)
+  }
+  createWindow()
+})
