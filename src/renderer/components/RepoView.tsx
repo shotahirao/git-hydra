@@ -10,6 +10,7 @@ interface RepoViewProps {
   name: string
   branches: BranchInfo[]
   commits: CommitInfo[]
+  visibleCommitCount: number
   selectedCommit: CommitInfo | null
   status: GitStatus | null
   diff: DiffFile[]
@@ -17,6 +18,7 @@ interface RepoViewProps {
   error: string
   onRefresh: (repoPath: string) => Promise<void>
   onCommitSelect: (repoPath: string, commit: CommitInfo) => void
+  onLoadMoreCommits: (repoPath: string) => void
   onStage: (repoPath: string, filePaths: string[]) => Promise<void>
   onUnstage: (repoPath: string, filePaths: string[]) => Promise<void>
   onCommit: (repoPath: string, message: string) => Promise<void>
@@ -36,6 +38,7 @@ const RepoView: React.FC<RepoViewProps> = ({
   repoPath,
   branches,
   commits,
+  visibleCommitCount,
   selectedCommit,
   status,
   diff,
@@ -43,6 +46,7 @@ const RepoView: React.FC<RepoViewProps> = ({
   error,
   onRefresh,
   onCommitSelect,
+  onLoadMoreCommits,
   onStage,
   onUnstage,
   onCommit,
@@ -206,10 +210,12 @@ const RepoView: React.FC<RepoViewProps> = ({
         <div className="flex-1 border-r border-gray-200 flex flex-col min-w-0">
           <CommitGraph
             commits={commits}
+            visibleCommitCount={visibleCommitCount}
             selectedCommit={selectedCommit}
             currentBranch={status?.current}
             loading={loading}
             onCommitSelect={handleCommitSelect}
+            onLoadMore={() => onLoadMoreCommits(repoPath)}
           />
         </div>
 

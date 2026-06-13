@@ -1,9 +1,8 @@
-import React, { useState, useEffect, useCallback, useRef, Suspense, lazy } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import type { CommitInfo, BranchInfo, GitStatus, DiffFile } from '@git-types/git'
 import type { RepoTab } from './types'
 import TabBar from './components/TabBar'
-
-const RepoView = lazy(() => import('./components/RepoView'))
+import RepoView from './components/RepoView'
 
 function generateTabId(): string {
   return `tab-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
@@ -20,6 +19,7 @@ function createEmptyTab(repoPath: string): RepoTab {
     name: getRepoName(repoPath),
     branches: [],
     commits: [],
+    visibleCommitCount: 50,
     selectedCommit: null,
     status: null,
     diff: [],
@@ -112,6 +112,7 @@ function App(): JSX.Element {
             ...t,
             branches: branchesData,
             commits: logData,
+            visibleCommitCount: 50,
             status: statusData,
             loading: false
           }
@@ -267,6 +268,18 @@ function App(): JSX.Element {
     [updateTab]
   )
 
+  const handleLoadMoreCommits = useCallback(
+    (repoPath: string) => {
+      const tab = tabsRef.current.find((t) => t.repoPath === repoPath)
+      if (!tab) return
+      updateTab(tab.id, (t) => ({
+        ...t,
+        visibleCommitCount: Math.min(t.visibleCommitCount + 50, t.commits.length)
+      }))
+    },
+    [updateTab]
+  )
+
   const handleCheckout = useCallback(
     async (repoPath: string, branchName: string) => {
       const tab = tabsRef.current.find((t) => t.repoPath === repoPath)
@@ -294,6 +307,7 @@ function App(): JSX.Element {
           ...t,
           branches: branchesData,
           commits: logData,
+          visibleCommitCount: 50,
           status: statusData,
           selectedCommit: headCommit || null,
           diff: diffData,
@@ -523,34 +537,34 @@ function App(): JSX.Element {
             key={tab.id}
             className={tab.id === activeTabId ? 'h-full' : 'hidden'}
           >
-            <Suspense fallback={<div className="h-full flex items-center justify-center text-gray-500">Loading view...</div>}>
-              <RepoView
-                repoPath={tab.repoPath}
-                name={tab.name}
-                branches={tab.branches}
-                commits={tab.commits}
-                selectedCommit={tab.selectedCommit}
-                status={tab.status}
-                diff={tab.diff}
-                loading={tab.loading}
-                error={tab.error}
-                onRefresh={refreshData}
-                onCommitSelect={handleCommitSelect}
-                onStage={handleStage}
-                onUnstage={handleUnstage}
-                onCommit={handleCommit}
-                onCheckout={handleCheckout}
-                onMerge={handleMerge}
-                onRebase={handleRebase}
-                onDeleteBranch={handleDeleteBranch}
-                onRenameBranch={handleRenameBranch}
-                onPush={handlePush}
-                onPull={handlePull}
-                onFetch={handleFetch}
-                onCreateBranch={handleCreateBranch}
-                onClearError={handleClearError}
-              />
-            </Suspense>
+            <RepoView
+              repoPath={tab.repoPath}
+              name={tab.name}
+              branches={tab.branches}
+              commits={tab.commits}
+              visibleCommitCount={tab.visibleCommitCount}
+              selectedCommit={tab.selectedCommit}
+              status={tab.status}
+              diff={tab.diff}
+              loading={tab.loading}
+              error={tab.error}
+              onRefresh={refreshData}
+              onCommitSelect={handleCommitSelect}
+              onLoadMoreCommits={handleLoadMoreCommits}
+              onStage={handleStage}
+              onUnstage={handleUnstage}
+              onCommit={handleCommit}
+              onCheckout={handleCheckout}
+              onMerge={handleMerge}
+              onRebase={handleRebase}
+              onDeleteBranch={handleDeleteBranch}
+              onRenameBranch={handleRenameBranch}
+              onPush={handlePush}
+              onPull={handlePull}
+              onFetch={handleFetch}
+              onCreateBranch={handleCreateBranch}
+              onClearError={handleClearError}
+            />
           </div>
         ))}
       </div>

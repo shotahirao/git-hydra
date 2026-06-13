@@ -6,6 +6,7 @@ export interface RepoTab {
   name: string // repo directory name
   branches: BranchInfo[]
   commits: CommitInfo[]
+  visibleCommitCount: number
   selectedCommit: CommitInfo | null
   status: GitStatus | null
   diff: DiffFile[]

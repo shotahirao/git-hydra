@@ -3,10 +3,12 @@ import { CommitInfo } from '@git-types/git'
 
 interface CommitGraphProps {
   commits: CommitInfo[]
+  visibleCommitCount: number
   selectedCommit: CommitInfo | null
   currentBranch?: string
   loading: boolean
   onCommitSelect: (commit: CommitInfo) => void
+  onLoadMore: () => void
 }
 
 const ROW_HEIGHT = 32
@@ -33,14 +35,17 @@ function getBranchColor(index: number): string {
   return BRANCH_COLORS[index % BRANCH_COLORS.length]
 }
 
-const CommitGraph: React.FC<CommitGraphProps> = ({ commits, selectedCommit, currentBranch, loading, onCommitSelect }) => {
+const CommitGraph: React.FC<CommitGraphProps> = ({ commits, visibleCommitCount, selectedCommit, currentBranch, loading, onCommitSelect, onLoadMore }) => {
+  const visibleCommits = useMemo(() => commits.slice(0, visibleCommitCount), [commits, visibleCommitCount])
+  const hasMore = visibleCommitCount < commits.length
+
   const { layout, maxColumn } = useMemo(() => {
     const columnMap = new Map<string, number>()
     const columns: (string | null)[] = []
     const layout: { commit: CommitInfo; column: number; color: string; row: number }[] = []
     let maxColumn = 0
 
-    commits.forEach((commit, row) => {
+    visibleCommits.forEach((commit, row) => {
       // Find or assign column for this commit
       let column = columnMap.get(commit.hash)
       
@@ -99,7 +104,7 @@ const CommitGraph: React.FC<CommitGraphProps> = ({ commits, selectedCommit, curr
   }, [commits])
 
   const svgWidth = LEFT_PADDING + (maxColumn + 1) * COLUMN_WIDTH + 80
-  const svgHeight = commits.length * ROW_HEIGHT + 20
+  const svgHeight = visibleCommits.length * ROW_HEIGHT + 20
 
   // Generate paths for connections
   const paths = useMemo(() => {
@@ -383,6 +388,17 @@ const CommitGraph: React.FC<CommitGraphProps> = ({ commits, selectedCommit, curr
               </button>
             ))}
           </div>
+
+          {hasMore && (
+            <div className="py-3 text-center border-t border-gray-100">
+              <button
+                onClick={onLoadMore}
+                className="px-4 py-1.5 text-sm text-blue-600 bg-blue-50 hover:bg-blue-100 rounded transition"
+              >
+                Load more commits ({commits.length - visibleCommitCount} remaining)
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -148,103 +148,114 @@ class GitService {
 
   async getDiff(repoPath: string, commitHash?: string, filePath?: string): Promise<DiffFile[]> {
     const git = this.getGit(repoPath)
-    
+
     let diffText: string
     if (commitHash) {
       diffText = await git.show([commitHash, '--format=', '-p'])
     } else {
       diffText = await git.diff(['--no-color', filePath || '.'])
     }
-    
-    return this.parseDiff(diffText)
+
+    return this.parseDiffAsync(diffText)
   }
 
   async getWorkingDiff(repoPath: string, filePath?: string): Promise<DiffFile[]> {
     const git = this.getGit(repoPath)
     const diffText = await git.diff(['--no-color', filePath || '.'])
-    return this.parseDiff(diffText)
+    return this.parseDiffAsync(diffText)
   }
 
   async getStagedDiff(repoPath: string, filePath?: string): Promise<DiffFile[]> {
     const git = this.getGit(repoPath)
     const diffText = await git.diff(['--cached', '--no-color', filePath || '.'])
-    return this.parseDiff(diffText)
+    return this.parseDiffAsync(diffText)
   }
 
   async getCommitDiff(repoPath: string, commitHash: string): Promise<DiffFile[]> {
     const git = this.getGit(repoPath)
     const diffText = await git.show([commitHash, '--format=', '-p'])
     console.log('[gitService] getCommitDiff raw output length:', diffText.length, 'first 200 chars:', diffText.substring(0, 200))
-    const result = this.parseDiff(diffText)
+    const result = await this.parseDiffAsync(diffText)
     console.log('[gitService] getCommitDiff parsed files:', result.length)
     return result
   }
 
-  private parseDiff(diffText: string): DiffFile[] {
-    const files: DiffFile[] = []
-    const lines = diffText.split('\n')
-    let currentFile: DiffFile | null = null
-    let currentHunk: DiffHunk | null = null
+  private parseDiffAsync(diffText: string): Promise<DiffFile[]> {
+    return new Promise((resolve) => {
+      const files: DiffFile[] = []
+      const lines = diffText.split('\n')
+      let currentFile: DiffFile | null = null
+      let currentHunk: DiffHunk | null = null
+      const CHUNK_SIZE = 1000
 
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i]
-      
-      if (line.startsWith('diff --git')) {
-        if (currentFile) {
-          if (currentHunk) currentFile.hunks.push(currentHunk)
-          files.push(currentFile)
-        }
-        const match = line.match(/diff --git a\/(.+) b\/(.+)/)
-        currentFile = {
-          path: match ? match[2] : '',
-          status: 'modified',
-          hunks: []
-        }
-        currentHunk = null
-      } else if (line.startsWith('new file mode')) {
-        if (currentFile) currentFile.status = 'added'
-      } else if (line.startsWith('deleted file mode')) {
-        if (currentFile) currentFile.status = 'deleted'
-      } else if (line.startsWith('rename from')) {
-        if (currentFile) {
-          currentFile.status = 'renamed'
-          currentFile.oldPath = line.replace('rename from ', '')
-        }
-      } else if (line.startsWith('@@')) {
-        if (currentFile) {
-          if (currentHunk) currentFile.hunks.push(currentHunk)
-          const match = line.match(/@@ -(\d+)(?:(\d+))? \+(\d+)(?:(\d+))? @@/)
-          if (match) {
-            currentHunk = {
-              oldStart: parseInt(match[1]),
-              oldLines: parseInt(match[2] || '1'),
-              newStart: parseInt(match[3]),
-              newLines: parseInt(match[4] || '1'),
-              lines: [{
-                type: 'header',
-                content: line
-              }]
+      const processChunk = (startIndex: number) => {
+        const endIndex = Math.min(startIndex + CHUNK_SIZE, lines.length)
+        for (let i = startIndex; i < endIndex; i++) {
+          const line = lines[i]
+
+          if (line.startsWith('diff --git')) {
+            if (currentFile) {
+              if (currentHunk) currentFile.hunks.push(currentHunk)
+              files.push(currentFile)
             }
+            const match = line.match(/diff --git a\/(.+) b\/(.+)/)
+            currentFile = {
+              path: match ? match[2] : '',
+              status: 'modified',
+              hunks: []
+            }
+            currentHunk = null
+          } else if (line.startsWith('new file mode')) {
+            if (currentFile) currentFile.status = 'added'
+          } else if (line.startsWith('deleted file mode')) {
+            if (currentFile) currentFile.status = 'deleted'
+          } else if (line.startsWith('rename from')) {
+            if (currentFile) {
+              currentFile.status = 'renamed'
+              currentFile.oldPath = line.replace('rename from ', '')
+            }
+          } else if (line.startsWith('@@')) {
+            if (currentFile) {
+              if (currentHunk) currentFile.hunks.push(currentHunk)
+              const match = line.match(/@@ -(\d+)(?:(\d+))? \+(\d+)(?:(\d+))? @@/)
+              if (match) {
+                currentHunk = {
+                  oldStart: parseInt(match[1]),
+                  oldLines: parseInt(match[2] || '1'),
+                  newStart: parseInt(match[3]),
+                  newLines: parseInt(match[4] || '1'),
+                  lines: [{
+                    type: 'header',
+                    content: line
+                  }]
+                }
+              }
+            }
+          } else if (currentHunk) {
+            let type: DiffLine['type'] = 'normal'
+            if (line.startsWith('+')) type = 'add'
+            else if (line.startsWith('-')) type = 'del'
+
+            currentHunk.lines.push({
+              type,
+              content: line
+            })
           }
         }
-      } else if (currentHunk) {
-        let type: DiffLine['type'] = 'normal'
-        if (line.startsWith('+')) type = 'add'
-        else if (line.startsWith('-')) type = 'del'
-        
-        currentHunk.lines.push({
-          type,
-          content: line
-        })
+
+        if (endIndex < lines.length) {
+          setImmediate(() => processChunk(endIndex))
+        } else {
+          if (currentFile) {
+            if (currentHunk) currentFile.hunks.push(currentHunk)
+            files.push(currentFile)
+          }
+          resolve(files)
+        }
       }
-    }
 
-    if (currentFile) {
-      if (currentHunk) currentFile.hunks.push(currentHunk)
-      files.push(currentFile)
-    }
-
-    return files
+      processChunk(0)
+    })
   }
 
   async stage(repoPath: string, filePaths: string[]): Promise<void> {
