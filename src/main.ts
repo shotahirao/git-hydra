@@ -13,9 +13,11 @@ const RENDERER_DIST = path.join(__dirname, '../renderer')
 // Set application name shown in menu bar, Dock and process list
 app.setName('GitHydra')
 
-// Disable GPU to prevent crashes on macOS
-app.commandLine.appendSwitch('disable-gpu')
-app.commandLine.appendSwitch('disable-software-rasterizer')
+// Disable GPU to prevent crashes on older macOS systems
+if (process.platform === 'darwin') {
+  app.commandLine.appendSwitch('disable-gpu')
+  app.commandLine.appendSwitch('disable-software-rasterizer')
+}
 
 let win: BrowserWindow | null
 
@@ -127,6 +129,10 @@ ipcMain.handle('config:saveSessionTabs', async (_, tabPaths: string[]) => {
 })
 
 // Git IPC Handlers
+ipcMain.handle('git:isValidRepo', async (_, repoPath: string) => {
+  return await gitService.isValidRepo(repoPath)
+})
+
 ipcMain.handle('git:openRepo', async (_, repoPath: string) => {
   return await gitService.openRepo(repoPath)
 })

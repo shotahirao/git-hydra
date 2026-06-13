@@ -12,6 +12,18 @@ class GitService {
     return git
   }
 
+  async isValidRepo(repoPath: string): Promise<boolean> {
+    try {
+      const gitDir = path.join(repoPath, '.git')
+      if (!fs.existsSync(gitDir)) return false
+      const git = simpleGit(repoPath)
+      await git.revparse(['--git-dir'])
+      return true
+    } catch {
+      return false
+    }
+  }
+
   async openRepo(repoPath: string): Promise<RepoInfo> {
     try {
       const git = simpleGit(repoPath)

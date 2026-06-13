@@ -1,8 +1,9 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import React, { useState, useEffect, useCallback, useRef, Suspense, lazy } from 'react'
 import type { CommitInfo, BranchInfo, GitStatus, DiffFile } from '@git-types/git'
 import type { RepoTab } from './types'
 import TabBar from './components/TabBar'
-import RepoView from './components/RepoView'
+
+const RepoView = lazy(() => import('./components/RepoView'))
 
 function generateTabId(): string {
   return `tab-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
@@ -137,6 +138,13 @@ function App(): JSX.Element {
   const restoreTabData = useCallback(
     async (repoPath: string, tabId: string) => {
       try {
+        const isValid = await window.electronAPI.git.isValidRepo(repoPath)
+        if (!isValid) {
+          console.error('Failed to restore session tab, not a valid repo:', repoPath)
+          setTabs((prev) => prev.filter((t) => t.id !== tabId))
+          return
+        }
+
         const info = await window.electronAPI.git.openRepo(repoPath)
         if (!info.valid) {
           console.error('Failed to restore session tab, not a valid repo:', repoPath)
@@ -515,32 +523,34 @@ function App(): JSX.Element {
             key={tab.id}
             className={tab.id === activeTabId ? 'h-full' : 'hidden'}
           >
-            <RepoView
-              repoPath={tab.repoPath}
-              name={tab.name}
-              branches={tab.branches}
-              commits={tab.commits}
-              selectedCommit={tab.selectedCommit}
-              status={tab.status}
-              diff={tab.diff}
-              loading={tab.loading}
-              error={tab.error}
-              onRefresh={refreshData}
-              onCommitSelect={handleCommitSelect}
-              onStage={handleStage}
-              onUnstage={handleUnstage}
-              onCommit={handleCommit}
-              onCheckout={handleCheckout}
-              onMerge={handleMerge}
-              onRebase={handleRebase}
-              onDeleteBranch={handleDeleteBranch}
-              onRenameBranch={handleRenameBranch}
-              onPush={handlePush}
-              onPull={handlePull}
-              onFetch={handleFetch}
-              onCreateBranch={handleCreateBranch}
-              onClearError={handleClearError}
-            />
+            <Suspense fallback={<div className="h-full flex items-center justify-center text-gray-500">Loading view...</div>}>
+              <RepoView
+                repoPath={tab.repoPath}
+                name={tab.name}
+                branches={tab.branches}
+                commits={tab.commits}
+                selectedCommit={tab.selectedCommit}
+                status={tab.status}
+                diff={tab.diff}
+                loading={tab.loading}
+                error={tab.error}
+                onRefresh={refreshData}
+                onCommitSelect={handleCommitSelect}
+                onStage={handleStage}
+                onUnstage={handleUnstage}
+                onCommit={handleCommit}
+                onCheckout={handleCheckout}
+                onMerge={handleMerge}
+                onRebase={handleRebase}
+                onDeleteBranch={handleDeleteBranch}
+                onRenameBranch={handleRenameBranch}
+                onPush={handlePush}
+                onPull={handlePull}
+                onFetch={handleFetch}
+                onCreateBranch={handleCreateBranch}
+                onClearError={handleClearError}
+              />
+            </Suspense>
           </div>
         ))}
       </div>

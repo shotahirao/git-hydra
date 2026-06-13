@@ -11,6 +11,7 @@ export interface ElectronAPI {
     saveSessionTabs: (tabPaths: string[]) => Promise<void>
   }
   git: {
+    isValidRepo: (repoPath: string) => Promise<boolean>
     openRepo: (repoPath: string) => Promise<any>
     closeRepo: (repoPath: string) => Promise<any>
     getStatus: (repoPath: string) => Promise<any>
@@ -48,6 +49,7 @@ const api: ElectronAPI = {
     saveSessionTabs: (tabPaths: string[]) => ipcRenderer.invoke('config:saveSessionTabs', tabPaths)
   },
   git: {
+    isValidRepo: (repoPath: string) => ipcRenderer.invoke('git:isValidRepo', repoPath),
     openRepo: (repoPath: string) => ipcRenderer.invoke('git:openRepo', repoPath),
     closeRepo: (repoPath: string) => ipcRenderer.invoke('git:closeRepo', repoPath),
     getStatus: (repoPath: string) => ipcRenderer.invoke('git:getStatus', repoPath),
