@@ -1,6 +1,6 @@
 {
   "name": "git-hydra",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "GitHydra - A simple Git GUI client",
   "main": "./out/main/main.js",
   "author": "",
