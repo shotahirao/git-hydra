@@ -11,6 +11,7 @@
     "postbuild": "node scripts/copy-resources.js",
     "preview": "electron-vite preview",
     "postinstall": "electron-builder install-app-deps",
+    "dist": "npm run build && electron-builder build --publish always",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui"
   },
@@ -51,6 +52,11 @@
         "to": "resources"
       }
     ],
+    "publish": {
+      "provider": "github",
+      "owner": "shotahirao",
+      "repo": "git-hydra"
+    },
     "mac": {
       "icon": "resources/icon.icns",
       "category": "public.app-category.developer-tools"
