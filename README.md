@@ -100,6 +100,29 @@ npx electron-builder
 
 macOS 向けには `resources/icon.icns` を、アプリ一般には `resources/icon.png` を使用しています。
 
+## リリース版のダウンロード
+
+[GitHub Releases](https://github.com/shotahirao/git-hydra/releases) から最新版をダウンロードできます。
+
+### macOS でアプリが開けない場合
+
+現在、GitHydra は Apple Developer ID によるコード署名を行っていないため、macOS の Gatekeeper によってブロックされることがあります。
+
+以下のようなメッセージが表示された場合：
+
+> 「GitHydra」は壊れているため開けません。ゴミ箱に入れる必要があります。
+
+ターミナルで以下のコマンドを実行し、アプリの検疫属性を解除してください：
+
+```bash
+xattr -d com.apple.quarantine /Applications/GitHydra.app
+```
+
+または、以下の方法でも開けます：
+
+1. アプリを右クリック → 「開く」を選択
+2. System Settings → Privacy & Security →「GitHydra」の「とにかく開く」を許可
+
 ## テスト
 
 ```bash
