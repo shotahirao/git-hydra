@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, dialog, shell } from 'electron'
+import { app, BrowserWindow, ipcMain, dialog, shell, nativeImage } from 'electron'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 import fs from 'node:fs'
@@ -9,6 +9,9 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 const VITE_DEV_SERVER_URL = process.env['VITE_DEV_SERVER_URL'] || 'http://localhost:5173'
 const RENDERER_DIST = path.join(__dirname, '../renderer')
+
+// Set application name shown in menu bar, Dock and process list
+app.setName('GitHydra')
 
 // Disable GPU to prevent crashes on macOS
 app.commandLine.appendSwitch('disable-gpu')
@@ -23,15 +26,47 @@ function getResourcePath(relativePath: string): string {
 
   // In dev/preview, prefer the built output path when available;
   // otherwise fall back to the project root (e.g. preview run directly).
-  const outPath = path.join(__dirname, '../', relativePath)
-  if (fs.existsSync(outPath)) {
-    return outPath
+  const candidates = [
+    path.join(__dirname, '../', relativePath),
+    path.join(__dirname, '../../', relativePath),
+    path.join(process.cwd(), relativePath)
+  ]
+  for (const candidate of candidates) {
+    if (fs.existsSync(candidate)) {
+      return candidate
+    }
   }
-  return path.join(process.cwd(), relativePath)
+  return candidates[candidates.length - 1]
+}
+
+function loadAppIcon(preferIcns = false): nativeImage.NativeImage | undefined {
+  const iconName = preferIcns && process.platform === 'darwin' ? 'resources/icon.icns' : 'resources/icon.png'
+  const fallbackName = preferIcns && process.platform === 'darwin' ? 'resources/icon.png' : 'resources/icon.icns'
+
+  for (const relativePath of [iconName, fallbackName]) {
+    const iconPath = getResourcePath(relativePath)
+    if (!fs.existsSync(iconPath)) {
+      continue
+    }
+    try {
+      const image = nativeImage.createFromPath(iconPath)
+      if (image.isEmpty()) {
+        console.warn('App icon loaded but is empty:', iconPath)
+        continue
+      }
+      console.log('App icon loaded from:', iconPath, `size=${image.getSize().width}x${image.getSize().height}`)
+      return image
+    } catch (error) {
+      console.error('Failed to load app icon:', iconPath, error)
+    }
+  }
+  console.warn('App icon could not be loaded from any candidate location')
+  return undefined
 }
 
 function createWindow(): void {
-  const iconPath = getResourcePath('resources/icon.png')
+  // BrowserWindow icon is ignored on macOS; use PNG for Windows/Linux taskbar.
+  const appIcon = loadAppIcon(false)
   win = new BrowserWindow({
     width: 1400,
     height: 900,
@@ -44,7 +79,7 @@ function createWindow(): void {
     },
     titleBarStyle: 'hiddenInset',
     show: true,
-    icon: iconPath
+    icon: appIcon
   })
 
   win.webContents.setWindowOpenHandler((details) => {
@@ -211,8 +246,25 @@ app.on('before-quit', async () => {
 
 app.whenReady().then(() => {
   if (process.platform === 'darwin') {
-    const iconPath = getResourcePath('resources/icon.png')
-    app.dock.setIcon(iconPath)
+    const appIcon = loadAppIcon(true)
+    if (appIcon) {
+      // macOS Dock icons are typically rendered at up to 128x128 (Retina 256x256).
+      // Resize to a standard size to avoid issues with oversized source images.
+      const dockIcon = appIcon.resize({ width: 512, height: 512 })
+      if (dockIcon && !dockIcon.isEmpty()) {
+        app.dock.setIcon(dockIcon)
+        app.setAboutPanelOptions({
+          applicationName: 'GitHydra',
+          iconPath: dockIcon
+        })
+      } else {
+        app.dock.setIcon(appIcon)
+        app.setAboutPanelOptions({
+          applicationName: 'GitHydra',
+          iconPath: appIcon
+        })
+      }
+    }
   }
   createWindow()
 })

@@ -1,4 +1,4 @@
-# git-hydra
+# GitHydra
 
 <p align="center">
   <img src="git-hydra-icon.png" alt="GitHydra icon" width="128" height="128">
