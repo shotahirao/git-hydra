@@ -15,9 +15,8 @@ class GitService {
   async openRepo(repoPath: string): Promise<RepoInfo> {
     try {
       const git = simpleGit(repoPath)
-      await git.status()
-      this.repos.set(repoPath, git)
       const status = await git.status()
+      this.repos.set(repoPath, git)
       return {
         path: repoPath,
         valid: true,

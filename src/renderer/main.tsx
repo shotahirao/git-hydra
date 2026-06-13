@@ -5,11 +5,8 @@ import './index.css'
 
 const root = ReactDOM.createRoot(document.getElementById('root')!)
 
-// Allow loading spinner to be visible before React mounts
-setTimeout(() => {
-  root.render(
-    <React.StrictMode>
-      <App />
-    </React.StrictMode>,
-  )
-}, 400)
+root.render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>,
+)

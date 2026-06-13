@@ -31,7 +31,7 @@ function App(): JSX.Element {
   const [tabs, setTabs] = useState<RepoTab[]>([])
   const [activeTabId, setActiveTabId] = useState<string | null>(null)
   const [recentRepos, setRecentRepos] = useState<string[]>([])
-  const [loadingRecent, setLoadingRecent] = useState(true)
+  const [loadingRecent, setLoadingRecent] = useState(false)
 
   const tabsRef = useRef(tabs)
   const activeTabRef = useRef(activeTabId)
@@ -59,9 +59,13 @@ function App(): JSX.Element {
       try {
         const sessionPaths = await window.electronAPI.config.getSessionTabs()
         if (sessionPaths.length > 0) {
-          for (const repoPath of sessionPaths) {
-            await addTab(repoPath, false)
-          }
+          const newTabs = sessionPaths.map(createEmptyTab)
+          setTabs(newTabs)
+          setActiveTabId(newTabs[0].id)
+
+          newTabs.forEach((tab) => {
+            restoreTabData(tab.repoPath, tab.id)
+          })
         }
       } catch (e) {
         console.error('Failed to restore session tabs:', e)
@@ -128,6 +132,32 @@ function App(): JSX.Element {
       }
     },
     [updateTab]
+  )
+
+  const restoreTabData = useCallback(
+    async (repoPath: string, tabId: string) => {
+      try {
+        const info = await window.electronAPI.git.openRepo(repoPath)
+        if (!info.valid) {
+          console.error('Failed to restore session tab, not a valid repo:', repoPath)
+          setTabs((prev) => prev.filter((t) => t.id !== tabId))
+          return
+        }
+
+        await window.electronAPI.config.addRecentRepo(repoPath)
+        setRecentRepos((prev) => {
+          const filtered = prev.filter((r) => r !== repoPath)
+          filtered.unshift(repoPath)
+          return filtered.slice(0, 10)
+        })
+
+        await refreshData(repoPath, tabId)
+      } catch (err: any) {
+        console.error('Failed to restore session tab:', repoPath, err)
+        setTabs((prev) => prev.filter((t) => t.id !== tabId))
+      }
+    },
+    [refreshData]
   )
 
   const addTab = useCallback(
