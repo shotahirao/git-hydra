@@ -55,7 +55,8 @@
     "publish": {
       "provider": "github",
       "owner": "shotahirao",
-      "repo": "git-hydra"
+      "repo": "git-hydra",
+      "draft": false
     },
     "mac": {
       "icon": "resources/icon.icns",
