@@ -421,13 +421,13 @@ function App(): JSX.Element {
   if (!activeTab) {
     return (
       <div className="flex flex-col h-screen bg-gray-50">
-        <div className="flex items-center h-9 bg-gray-800 border-b border-gray-700 select-none">
-          <div className="flex flex-1 overflow-x-auto">
+        <div className="flex items-center h-10 bg-gray-800 border-b border-gray-700 select-none">
+          <div className={`flex flex-1 overflow-x-auto ${window.electronAPI?.platform === 'darwin' ? 'pl-20' : ''}`}>
             {/* No tabs */}
           </div>
           <button
             onClick={handleNewTab}
-            className="flex items-center justify-center w-9 h-9 text-gray-400 hover:text-white hover:bg-gray-700 transition-colors text-lg"
+            className="flex items-center justify-center w-10 h-10 text-gray-400 hover:text-white hover:bg-gray-700 transition-colors text-lg"
             title="New tab"
           >
             +

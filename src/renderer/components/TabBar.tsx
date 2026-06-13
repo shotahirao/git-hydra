@@ -15,9 +15,10 @@ interface TabBarProps {
 }
 
 const TabBar: React.FC<TabBarProps> = ({ tabs, activeTabId, onTabClick, onTabClose, onNewTab }) => {
+  const isMac = window.electronAPI?.platform === 'darwin'
   return (
-    <div className="flex items-center h-9 bg-gray-800 border-b border-gray-700 select-none">
-      <div className="flex flex-1 overflow-x-auto">
+    <div className="flex items-center h-10 bg-gray-800 border-b border-gray-700 select-none">
+      <div className={`flex flex-1 overflow-x-auto ${isMac ? 'pl-20' : ''}`}>
         {tabs.map((tab) => {
           const isActive = tab.id === activeTabId
           return (
@@ -25,7 +26,7 @@ const TabBar: React.FC<TabBarProps> = ({ tabs, activeTabId, onTabClick, onTabClo
               key={tab.id}
               onClick={() => onTabClick(tab.id)}
               className={`
-                group flex items-center min-w-[140px] max-w-[240px] h-9 px-3 cursor-pointer
+                group flex items-center min-w-[140px] max-w-[240px] h-10 px-3 cursor-pointer
                 border-r border-gray-700 text-sm transition-colors
                 ${isActive ? 'bg-gray-700 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-750 hover:text-gray-200'}
               `}
@@ -50,7 +51,7 @@ const TabBar: React.FC<TabBarProps> = ({ tabs, activeTabId, onTabClick, onTabClo
       </div>
       <button
         onClick={onNewTab}
-        className="flex items-center justify-center w-9 h-9 text-gray-400 hover:text-white hover:bg-gray-700 transition-colors text-lg"
+        className="flex items-center justify-center w-10 h-10 text-gray-400 hover:text-white hover:bg-gray-700 transition-colors text-lg"
         title="New tab"
       >
         +

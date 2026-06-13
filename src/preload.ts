@@ -1,6 +1,7 @@
 import { contextBridge, ipcRenderer } from 'electron'
 
 export interface ElectronAPI {
+  platform: string
   openDirectory: () => Promise<string | null>
   config: {
     getRecentRepos: () => Promise<string[]>
@@ -35,6 +36,7 @@ export interface ElectronAPI {
 }
 
 const api: ElectronAPI = {
+  platform: process.platform,
   openDirectory: async () => {
     return await ipcRenderer.invoke('dialog:openDirectory')
   },
