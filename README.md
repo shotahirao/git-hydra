@@ -115,11 +115,13 @@ npm run build
 
 > 「GitHydra」は壊れているため開けません。ゴミ箱に入れる必要があります。
 
-ターミナルで以下のコマンドを実行し、アプリの検疫属性を解除してください：
+ ターミナルで以下のコマンドを実行し、アプリの検疫属性を解除してください：
 
 ```bash
-xattr -d com.apple.quarantine /Applications/GitHydra.app
+sudo xattr -rd com.apple.quarantine /Applications/GitHydra.app
 ```
+
+> 注: `Operation not permitted` と表示される場合は、**System Settings → Privacy & Security → Full Disk Access** から **Terminal** を許可してください。
 
 または、以下の方法でも開けます：
 
