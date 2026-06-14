@@ -5,7 +5,10 @@ test.describe('GitHydra E2E Tests', () => {
     await page.addInitScript(() => {
       // @ts-ignore
       window.electronAPI = {
+        platform: 'darwin',
         openDirectory: async () => null,
+        openExternal: async () => {},
+        onRepoChanged: () => () => {},
         config: {
           getRecentRepos: async () => [],
           addRecentRepo: async () => {},
@@ -14,11 +17,17 @@ test.describe('GitHydra E2E Tests', () => {
           saveSessionTabs: async () => {}
         },
         git: {
+          isValidRepo: async () => true,
           openRepo: async () => ({ valid: true, currentBranch: 'main' }),
           closeRepo: async () => {},
+          watchRepo: async () => {},
+          unwatchRepo: async () => {},
           getStatus: async () => ({}),
           getBranches: async () => [],
           getLog: async () => [],
+          getDiff: async () => [],
+          getWorkingDiff: async () => [],
+          getStagedDiff: async () => [],
           getCommitDiff: async () => [],
           stage: async () => {},
           unstage: async () => {},
@@ -26,17 +35,20 @@ test.describe('GitHydra E2E Tests', () => {
           checkout: async () => {},
           createBranch: async () => {},
           push: async () => {},
-          pull: async () => {},
+          pull: async () => '',
           fetch: async () => {},
           merge: async () => '',
           rebase: async () => '',
           deleteBranch: async () => {},
-          renameBranch: async () => {}
+          renameBranch: async () => {},
+          listWorktrees: async () => [],
+          addWorktree: async () => ({ name: '', path: '' }),
+          removeWorktree: async () => {}
         }
       }
     })
 
-    await page.goto('http://localhost:5173')
+    await page.goto('http://localhost:1420')
 
     // 初期画面の確認
     await expect(page.locator('text=GitHydra')).toBeVisible()
@@ -47,7 +59,10 @@ test.describe('GitHydra E2E Tests', () => {
     await page.addInitScript(() => {
       // @ts-ignore
       window.electronAPI = {
+        platform: 'darwin',
         openDirectory: async () => null,
+        openExternal: async () => {},
+        onRepoChanged: () => () => {},
         config: {
           getRecentRepos: async () => ['/Users/test/project-a', '/Users/test/project-b'],
           addRecentRepo: async () => {},
@@ -56,11 +71,17 @@ test.describe('GitHydra E2E Tests', () => {
           saveSessionTabs: async () => {}
         },
         git: {
+          isValidRepo: async () => true,
           openRepo: async () => ({ valid: true, currentBranch: 'main' }),
           closeRepo: async () => {},
+          watchRepo: async () => {},
+          unwatchRepo: async () => {},
           getStatus: async () => ({}),
           getBranches: async () => [],
           getLog: async () => [],
+          getDiff: async () => [],
+          getWorkingDiff: async () => [],
+          getStagedDiff: async () => [],
           getCommitDiff: async () => [],
           stage: async () => {},
           unstage: async () => {},
@@ -68,17 +89,20 @@ test.describe('GitHydra E2E Tests', () => {
           checkout: async () => {},
           createBranch: async () => {},
           push: async () => {},
-          pull: async () => {},
+          pull: async () => '',
           fetch: async () => {},
           merge: async () => '',
           rebase: async () => '',
           deleteBranch: async () => {},
-          renameBranch: async () => {}
+          renameBranch: async () => {},
+          listWorktrees: async () => [],
+          addWorktree: async () => ({ name: '', path: '' }),
+          removeWorktree: async () => {}
         }
       }
     })
 
-    await page.goto('http://localhost:5173')
+    await page.goto('http://localhost:1420')
 
     // 最近使ったリポジトリが表示されるのを待つ
     await expect(page.locator('text=Recent Repositories')).toBeVisible()
@@ -90,7 +114,10 @@ test.describe('GitHydra E2E Tests', () => {
     await page.addInitScript(() => {
       // @ts-ignore
       window.electronAPI = {
+        platform: 'darwin',
         openDirectory: async () => '/tmp/test-repo',
+        openExternal: async () => {},
+        onRepoChanged: () => () => {},
         config: {
           getRecentRepos: async () => [],
           addRecentRepo: async () => {},
@@ -99,8 +126,11 @@ test.describe('GitHydra E2E Tests', () => {
           saveSessionTabs: async () => {}
         },
         git: {
+          isValidRepo: async () => true,
           openRepo: async () => ({ valid: true, currentBranch: 'main' }),
           closeRepo: async () => {},
+          watchRepo: async () => {},
+          unwatchRepo: async () => {},
           getStatus: async () => ({
             current: 'main',
             ahead: 0,
@@ -122,6 +152,9 @@ test.describe('GitHydra E2E Tests', () => {
               refs: 'HEAD -> main'
             }
           ],
+          getDiff: async () => [],
+          getWorkingDiff: async () => [],
+          getStagedDiff: async () => [],
           getCommitDiff: async () => [],
           stage: async () => {},
           unstage: async () => {},
@@ -129,17 +162,20 @@ test.describe('GitHydra E2E Tests', () => {
           checkout: async () => {},
           createBranch: async () => {},
           push: async () => {},
-          pull: async () => {},
+          pull: async () => '',
           fetch: async () => {},
           merge: async () => '',
           rebase: async () => '',
           deleteBranch: async () => {},
-          renameBranch: async () => {}
+          renameBranch: async () => {},
+          listWorktrees: async () => [],
+          addWorktree: async () => ({ name: '', path: '' }),
+          removeWorktree: async () => {}
         }
       }
     })
 
-    await page.goto('http://localhost:5173')
+    await page.goto('http://localhost:1420')
 
     // Open Repositoryボタンをクリック
     await page.click('text=Open Repository')
@@ -152,7 +188,10 @@ test.describe('GitHydra E2E Tests', () => {
     await page.addInitScript(() => {
       // @ts-ignore
       window.electronAPI = {
+        platform: 'darwin',
         openDirectory: async () => '/tmp/test-repo',
+        openExternal: async () => {},
+        onRepoChanged: () => () => {},
         config: {
           getRecentRepos: async () => [],
           addRecentRepo: async () => {},
@@ -161,8 +200,11 @@ test.describe('GitHydra E2E Tests', () => {
           saveSessionTabs: async () => {}
         },
         git: {
+          isValidRepo: async () => true,
           openRepo: async () => ({ valid: true, currentBranch: 'main' }),
           closeRepo: async () => {},
+          watchRepo: async () => {},
+          unwatchRepo: async () => {},
           getStatus: async () => ({
             current: 'main',
             ahead: 0,
@@ -184,6 +226,9 @@ test.describe('GitHydra E2E Tests', () => {
               refs: 'HEAD -> main'
             }
           ],
+          getDiff: async () => [],
+          getWorkingDiff: async () => [],
+          getStagedDiff: async () => [],
           getCommitDiff: async () => [],
           stage: async () => {},
           unstage: async () => {},
@@ -191,17 +236,20 @@ test.describe('GitHydra E2E Tests', () => {
           checkout: async () => {},
           createBranch: async () => {},
           push: async () => {},
-          pull: async () => {},
+          pull: async () => '',
           fetch: async () => {},
           merge: async () => '',
           rebase: async () => '',
           deleteBranch: async () => {},
-          renameBranch: async () => {}
+          renameBranch: async () => {},
+          listWorktrees: async () => [],
+          addWorktree: async () => ({ name: '', path: '' }),
+          removeWorktree: async () => {}
         }
       }
     })
 
-    await page.goto('http://localhost:5173')
+    await page.goto('http://localhost:1420')
 
     // Open Repositoryボタンをクリック
     await page.click('text=Open Repository')

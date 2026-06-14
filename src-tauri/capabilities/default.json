@@ -1,0 +1,20 @@
+{
+  "$schema": "../node_modules/@tauri-apps/cli/schema.json",
+  "identifier": "default",
+  "description": "Default capabilities for GitHydra",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "dialog:default",
+    "dialog:allow-open",
+    "opener:default",
+    "opener:allow-open-url",
+    "fs:default",
+    "fs:allow-app-read",
+    "fs:allow-app-write",
+    "fs:allow-app-meta",
+    "fs:allow-app-read-recursive",
+    "fs:allow-app-write-recursive",
+    "fs:allow-resource-read-recursive"
+  ]
+}

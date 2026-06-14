@@ -1,67 +1,37 @@
 {
   "name": "git-hydra",
-  "version": "1.0.1",
+  "version": "2.0.0",
   "description": "GitHydra - A simple Git GUI client",
-  "main": "./out/main/main.js",
   "author": "",
   "license": "MIT",
   "scripts": {
-    "dev": "electron-vite dev",
-    "build": "electron-vite build",
-    "postbuild": "node scripts/copy-resources.js",
-    "preview": "electron-vite preview",
-    "postinstall": "electron-builder install-app-deps",
-    "dist": "npm run build && electron-builder build --publish always",
+    "dev": "tauri dev",
+    "dev:fe": "vite",
+    "build": "tauri build",
+    "build:fe": "tsc && vite build",
+    "preview": "vite preview",
+    "tauri": "tauri",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui"
   },
   "dependencies": {
-    "@electron-toolkit/preload": "^3.0.1",
-    "@electron-toolkit/utils": "^3.0.0",
-    "chokidar": "^5.0.0",
-    "simple-git": "^3.24.0"
+    "@tauri-apps/api": "^2.11.0",
+    "@tauri-apps/plugin-dialog": "^2.7.1",
+    "@tauri-apps/plugin-fs": "^2.5.1",
+    "@tauri-apps/plugin-opener": "^2.5.4",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
   },
   "devDependencies": {
-    "@electron-toolkit/tsconfig": "^1.0.1",
     "@playwright/test": "^1.60.0",
+    "@tauri-apps/cli": "^2.11.2",
     "@types/react": "^18.2.64",
     "@types/react-dom": "^18.2.21",
     "@vitejs/plugin-react": "^4.2.1",
     "autoprefixer": "^10.4.18",
-    "electron": "^29.1.1",
-    "electron-builder": "^24.13.3",
-    "electron-vite": "^2.3.0",
     "postcss": "^8.4.35",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
     "tailwindcss": "^3.4.1",
     "typescript": "^5.4.2",
     "vite": "^5.1.6"
-  },
-  "build": {
-    "appId": "com.githydra.app",
-    "productName": "GitHydra",
-    "directories": {
-      "output": "dist"
-    },
-    "files": [
-      "out/**/*"
-    ],
-    "extraResources": [
-      {
-        "from": "resources",
-        "to": "resources"
-      }
-    ],
-    "publish": {
-      "provider": "github",
-      "owner": "shotahirao",
-      "repo": "git-hydra",
-      "draft": false
-    },
-    "mac": {
-      "icon": "resources/icon.icns",
-      "category": "public.app-category.developer-tools"
-    }
   }
 }

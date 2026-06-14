@@ -18,7 +18,6 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/renderer/*"],
-      "@main/*": ["src/main/*"],
       "@git-types/*": ["src/types/*"]
     }
   },

@@ -10,7 +10,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT">
-  <img src="https://img.shields.io/badge/Electron-29.1.1-47848F?logo=electron" alt="Electron">
+  <img src="https://img.shields.io/badge/Tauri-2.0-24C8D8?logo=tauri" alt="Tauri">
   <img src="https://img.shields.io/badge/React-18.2.0-61DAFB?logo=react" alt="React">
   <img src="https://img.shields.io/badge/TypeScript-5.4.2-3178C6?logo=typescript" alt="TypeScript">
 </p>
@@ -19,8 +19,8 @@
 
 ## 概要
 
-**git-hydra** は、Electron + React + TypeScript で構築されたシンプルな Git GUI クライアントです。
-[simple-git](https://github.com/steveukx/git-js) をバックエンドに利用し、GitKraken 風の直感的なインターフェースで、リポジトリの閲覧、コミット、ブランチ操作、差分確認などの日常業務を快適に行えます。
+**git-hydra** は、Tauri + React + TypeScript + Rust で構築されたシンプルな Git GUI クライアントです。
+Rust の [git2](https://github.com/rust-lang/git2-rs) をバックエンドに利用し、GitKraken 風の直感的なインターフェースで、リポジトリの閲覧、コミット、ブランチ操作、差分確認、worktree 管理などの日常業務を快適に行えます。
 
 ## 主な機能
 
@@ -35,6 +35,8 @@
 - **ブランチ操作**
   - ブランチの一覧表示、チェックアウト、新規作成、削除、リネーム
   - マージ・リベース対応
+- **worktree 対応**
+  - worktree の一覧、作成、削除
 - **ステージング & コミット**
   - GitKraken 風の Status パネルで、ステージ / アンステージ / コミットを実行
   - ファイルを選択して作業ディレクトリまたはステージの差分を確認
@@ -47,18 +49,19 @@
 
 | レイヤー | 技術 |
 | --- | --- |
-| フレームワーク | Electron |
+| フレームワーク | Tauri v2 |
+| バックエンド | Rust, git2 |
 | フロントエンド | React 18, TypeScript |
 | スタイリング | Tailwind CSS |
-| ビルドツール | Vite（electron-vite） |
-| Git 操作 | simple-git |
-| パッケージング | electron-builder |
+| ビルドツール | Vite |
+| パッケージング | Tauri Bundler |
 | E2E テスト | Playwright |
 
 ## 必要条件
 
 - Node.js（LTS 推奨）
 - npm
+- Rust（Tauri ビルドに必要）
 - ローカルにインストールされた Git
 
 ## インストール
@@ -79,7 +82,7 @@ npm install
 npm run dev
 ```
 
-開発モードでは、Vite の HMR が有効になります。Electron のメインプロセスとレンダラープロセスが同時に起動します。
+開発モードでは、Vite の HMR が有効になります。Tauri の Rust バックエンドと React フロントエンドが同時に起動します。
 
 ## ビルド
 
@@ -87,18 +90,18 @@ npm run dev
 # プロダクションビルド
 npm run build
 
-# ビルド結果を確認
-npm run preview
+# フロントエンドのみビルド
+npm run build:fe
 ```
 
 ### パッケージング
 
 ```bash
-# 各プラットフォーム向けのインストーラーを作成
-npx electron-builder
+# macOS 向け .app を作成
+npm run build
 ```
 
-macOS 向けには `resources/icon.icns` を、アプリ一般には `resources/icon.png` を使用しています。
+ビルド結果は `src-tauri/target/release/bundle/macos/GitHydra.app` に出力されます。
 
 ## リリース版のダウンロード
 
@@ -141,30 +144,29 @@ Playwright を使用し、リポジトリのオープンやブランチ切り替
 git-hydra/
 ├── e2e/                  # Playwright E2E テスト
 ├── resources/            # アプリケーションアイコンなどのリソース
-├── scripts/              # ビルド後のリソースコピーなどのスクリプト
+├── src-tauri/            # Tauri Rust バックエンド
+│   ├── src/
+│   │   ├── main.rs       # エントリーポイント
+│   │   ├── lib.rs        # Tauri コマンド登録
+│   │   ├── commands.rs   # フロントエンド向けコマンド
+│   │   ├── git_service.rs # git2 による Git 操作
+│   │   └── watcher.rs    # リポジトリ変更監視
+│   ├── Cargo.toml
+│   ├── tauri.conf.json
+│   └── icons/            # アプリアイコン
 ├── src/
-│   ├── main/             # Electron メインプロセス（Git 操作、設定管理）
-│   │   ├── gitService.ts
-│   │   └── configService.ts
-│   ├── main.ts           # Electron アプリのエントリーポイント
-│   ├── preload.ts        # コンテキストブリッジ（IPC インターフェース）
-│   ├── renderer/         # React によるレンダラープロセス
+│   ├── renderer/         # React によるフロントエンド
 │   │   ├── App.tsx
+│   │   ├── api/          # Tauri API ラッパー
 │   │   ├── components/   # UI コンポーネント
-│   │   │   ├── BranchList.tsx
-│   │   │   ├── CommitDetail.tsx
-│   │   │   ├── CommitGraph.tsx
-│   │   │   ├── RepoView.tsx
-│   │   │   ├── StatusPanel.tsx
-│   │   │   └── TabBar.tsx
 │   │   └── types.ts
 │   └── types/            # Git 関連の型定義
-├── electron.vite.config.ts
 ├── index.html
 ├── package.json
 ├── playwright.config.ts
 ├── tailwind.config.cjs
-└── tsconfig.json
+├── tsconfig.json
+└── vite.config.ts
 ```
 
 ## ライセンス

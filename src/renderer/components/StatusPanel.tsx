@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { GitStatus, FileStatus, DiffFile, DiffHunk, DiffLine } from '@git-types/git'
+import { GitStatus, FileStatus, DiffFile } from '@git-types/git'
 
 interface StatusPanelProps {
   status: GitStatus | null

@@ -18,33 +18,24 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: 'npm'
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
 
       - name: Install dependencies
         run: npm ci
 
-      - name: Configure code signing environment
-        env:
-          CSC_LINK: ${{ secrets.CSC_LINK }}
-          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-        run: |
-          if [ -n "$CSC_LINK" ]; then
-            echo "CSC_LINK=$CSC_LINK" >> "$GITHUB_ENV"
-            echo "CSC_KEY_PASSWORD=$CSC_KEY_PASSWORD" >> "$GITHUB_ENV"
-            echo "APPLE_ID=$APPLE_ID" >> "$GITHUB_ENV"
-            echo "APPLE_APP_SPECIFIC_PASSWORD=$APPLE_APP_SPECIFIC_PASSWORD" >> "$GITHUB_ENV"
-            echo "APPLE_TEAM_ID=$APPLE_TEAM_ID" >> "$GITHUB_ENV"
-          else
-            echo "No signing certificate configured, building unsigned app"
-          fi
-
       - name: Build and release
-        run: npm run dist
+        uses: tauri-apps/tauri-action@v0
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # Disable identity auto-discovery when no signing certificate is configured.
-          CSC_IDENTITY_AUTO_DISCOVERY: ${{ secrets.CSC_LINK != '' && 'true' || 'false' }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: 'GitHydra ${{ github.ref_name }}'
+          releaseBody: 'See the assets to download this version.'
+          releaseDraft: false
+          prerelease: false

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import type { CommitInfo, BranchInfo, GitStatus, DiffFile } from '@git-types/git'
+import type { CommitInfo, DiffFile } from '@git-types/git'
 import type { RepoTab } from './types'
 import TabBar from './components/TabBar'
 import RepoView from './components/RepoView'

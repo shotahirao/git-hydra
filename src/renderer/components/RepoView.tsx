@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef } from 'react'
+import React, { useCallback, useEffect } from 'react'
 import type { CommitInfo, BranchInfo, GitStatus, DiffFile } from '@git-types/git'
 import BranchList from './BranchList'
 import CommitGraph from './CommitGraph'
@@ -63,8 +63,6 @@ const RepoView: React.FC<RepoViewProps> = ({
   onCreateBranch,
   onClearError
 }) => {
-  const commitsRef = useRef<CommitInfo[]>(commits)
-
   // Watch for repository changes instead of polling (fallback to polling if not supported)
   useEffect(() => {
     const hasWatcher = !!window.electronAPI?.onRepoChanged && !!window.electronAPI?.git?.watchRepo

@@ -46,7 +46,10 @@ test.describe('CommitGraph Scroll', () => {
     await page.addInitScript(({ repoPath, commits }) => {
       // @ts-ignore
       window.electronAPI = {
+        platform: 'darwin',
         openDirectory: async () => repoPath,
+        openExternal: async () => {},
+        onRepoChanged: () => () => {},
         config: {
           getRecentRepos: async () => [],
           addRecentRepo: async () => {},
@@ -55,8 +58,11 @@ test.describe('CommitGraph Scroll', () => {
           saveSessionTabs: async () => {}
         },
         git: {
+          isValidRepo: async () => true,
           openRepo: async () => ({ valid: true, currentBranch: 'main' }),
           closeRepo: async () => {},
+          watchRepo: async () => {},
+          unwatchRepo: async () => {},
           getStatus: async () => ({
             current: 'main',
             ahead: 0,
@@ -70,6 +76,9 @@ test.describe('CommitGraph Scroll', () => {
             { name: 'main', current: true, label: 'main' }
           ],
           getLog: async () => commits,
+          getDiff: async () => [],
+          getWorkingDiff: async () => [],
+          getStagedDiff: async () => [],
           getCommitDiff: async () => [],
           stage: async () => {},
           unstage: async () => {},
@@ -77,17 +86,20 @@ test.describe('CommitGraph Scroll', () => {
           checkout: async () => {},
           createBranch: async () => {},
           push: async () => {},
-          pull: async () => {},
+          pull: async () => '',
           fetch: async () => {},
           merge: async () => '',
           rebase: async () => '',
           deleteBranch: async () => {},
-          renameBranch: async () => {}
+          renameBranch: async () => {},
+          listWorktrees: async () => [],
+          addWorktree: async () => ({ name: '', path: '' }),
+          removeWorktree: async () => {}
         }
       }
     }, { repoPath, commits })
-    
-    await page.goto('http://localhost:5173')
+
+    await page.goto('http://localhost:1420')
     
     // Open Repositoryボタンをクリック
     await page.click('text=Open Repository')
