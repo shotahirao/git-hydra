@@ -11,6 +11,7 @@ interface RepoViewProps {
   branches: BranchInfo[]
   commits: CommitInfo[]
   visibleCommitCount: number
+  loadedAllCommits: boolean
   selectedCommit: CommitInfo | null
   status: GitStatus | null
   diff: DiffFile[]
@@ -39,6 +40,7 @@ const RepoView: React.FC<RepoViewProps> = ({
   branches,
   commits,
   visibleCommitCount,
+  loadedAllCommits,
   selectedCommit,
   status,
   diff,
@@ -211,6 +213,7 @@ const RepoView: React.FC<RepoViewProps> = ({
           <CommitGraph
             commits={commits}
             visibleCommitCount={visibleCommitCount}
+            loadedAllCommits={loadedAllCommits}
             selectedCommit={selectedCommit}
             currentBranch={status?.current}
             loading={loading}

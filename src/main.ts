@@ -149,8 +149,8 @@ ipcMain.handle('git:getBranches', async (_, repoPath: string) => {
   return await gitService.getBranches(repoPath)
 })
 
-ipcMain.handle('git:getLog', async (_, repoPath: string, maxCount?: number) => {
-  return await gitService.getLog(repoPath, maxCount)
+ipcMain.handle('git:getLog', async (_, repoPath: string, maxCount?: number, skip?: number) => {
+  return await gitService.getLog(repoPath, maxCount, skip)
 })
 
 ipcMain.handle('git:getDiff', async (_, repoPath: string, commitHash?: string, filePath?: string) => {

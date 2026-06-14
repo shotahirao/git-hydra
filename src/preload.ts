@@ -16,7 +16,7 @@ export interface ElectronAPI {
     closeRepo: (repoPath: string) => Promise<any>
     getStatus: (repoPath: string) => Promise<any>
     getBranches: (repoPath: string) => Promise<any>
-    getLog: (repoPath: string, maxCount?: number) => Promise<any>
+    getLog: (repoPath: string, maxCount?: number, skip?: number) => Promise<any>
     getDiff: (repoPath: string, commitHash?: string, filePath?: string) => Promise<any>
     getWorkingDiff: (repoPath: string, filePath?: string) => Promise<any>
     getStagedDiff: (repoPath: string, filePath?: string) => Promise<any>
@@ -54,7 +54,7 @@ const api: ElectronAPI = {
     closeRepo: (repoPath: string) => ipcRenderer.invoke('git:closeRepo', repoPath),
     getStatus: (repoPath: string) => ipcRenderer.invoke('git:getStatus', repoPath),
     getBranches: (repoPath: string) => ipcRenderer.invoke('git:getBranches', repoPath),
-    getLog: (repoPath: string, maxCount?: number) => ipcRenderer.invoke('git:getLog', repoPath, maxCount),
+    getLog: (repoPath: string, maxCount?: number, skip?: number) => ipcRenderer.invoke('git:getLog', repoPath, maxCount, skip),
     getDiff: (repoPath: string, commitHash?: string, filePath?: string) => ipcRenderer.invoke('git:getDiff', repoPath, commitHash, filePath),
     getWorkingDiff: (repoPath: string, filePath?: string) => ipcRenderer.invoke('git:getWorkingDiff', repoPath, filePath),
     getStagedDiff: (repoPath: string, filePath?: string) => ipcRenderer.invoke('git:getStagedDiff', repoPath, filePath),

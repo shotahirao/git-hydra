@@ -4,6 +4,7 @@ import { CommitInfo } from '@git-types/git'
 interface CommitGraphProps {
   commits: CommitInfo[]
   visibleCommitCount: number
+  loadedAllCommits: boolean
   selectedCommit: CommitInfo | null
   currentBranch?: string
   loading: boolean
@@ -35,9 +36,9 @@ function getBranchColor(index: number): string {
   return BRANCH_COLORS[index % BRANCH_COLORS.length]
 }
 
-const CommitGraph: React.FC<CommitGraphProps> = ({ commits, visibleCommitCount, selectedCommit, currentBranch, loading, onCommitSelect, onLoadMore }) => {
+const CommitGraph: React.FC<CommitGraphProps> = ({ commits, visibleCommitCount, loadedAllCommits, selectedCommit, currentBranch, loading, onCommitSelect, onLoadMore }) => {
   const visibleCommits = useMemo(() => commits.slice(0, visibleCommitCount), [commits, visibleCommitCount])
-  const hasMore = visibleCommitCount < commits.length
+  const hasMore = visibleCommitCount < commits.length || !loadedAllCommits
 
   const { layout, maxColumn } = useMemo(() => {
     const columnMap = new Map<string, number>()

@@ -20,6 +20,7 @@ function createEmptyTab(repoPath: string): RepoTab {
     branches: [],
     commits: [],
     visibleCommitCount: 50,
+    loadedAllCommits: false,
     selectedCommit: null,
     status: null,
     diff: [],
@@ -113,6 +114,7 @@ function App(): JSX.Element {
             branches: branchesData,
             commits: logData,
             visibleCommitCount: 50,
+            loadedAllCommits: logData.length < 50,
             status: statusData,
             loading: false
           }
@@ -269,13 +271,32 @@ function App(): JSX.Element {
   )
 
   const handleLoadMoreCommits = useCallback(
-    (repoPath: string) => {
+    async (repoPath: string) => {
       const tab = tabsRef.current.find((t) => t.repoPath === repoPath)
       if (!tab) return
-      updateTab(tab.id, (t) => ({
-        ...t,
-        visibleCommitCount: Math.min(t.visibleCommitCount + 50, t.commits.length)
-      }))
+
+      const nextVisibleCount = tab.visibleCommitCount + 50
+
+      if (nextVisibleCount > tab.commits.length && !tab.loadedAllCommits) {
+        try {
+          updateTab(tab.id, (t) => ({ ...t, loading: true, error: '' }))
+          const additionalCommits = await window.electronAPI.git.getLog(repoPath, 50, tab.commits.length)
+          updateTab(tab.id, (t) => ({
+            ...t,
+            commits: [...t.commits, ...additionalCommits],
+            visibleCommitCount: Math.min(nextVisibleCount, t.commits.length + additionalCommits.length),
+            loadedAllCommits: additionalCommits.length < 50,
+            loading: false
+          }))
+        } catch (err: any) {
+          updateTab(tab.id, (t) => ({ ...t, error: err.message || 'Failed to load more commits', loading: false }))
+        }
+      } else {
+        updateTab(tab.id, (t) => ({
+          ...t,
+          visibleCommitCount: Math.min(nextVisibleCount, t.commits.length)
+        }))
+      }
     },
     [updateTab]
   )
@@ -308,6 +329,7 @@ function App(): JSX.Element {
           branches: branchesData,
           commits: logData,
           visibleCommitCount: 50,
+          loadedAllCommits: logData.length < 50,
           status: statusData,
           selectedCommit: headCommit || null,
           diff: diffData,
@@ -543,6 +565,7 @@ function App(): JSX.Element {
               branches={tab.branches}
               commits={tab.commits}
               visibleCommitCount={tab.visibleCommitCount}
+              loadedAllCommits={tab.loadedAllCommits}
               selectedCommit={tab.selectedCommit}
               status={tab.status}
               diff={tab.diff}

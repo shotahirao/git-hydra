@@ -117,12 +117,13 @@ class GitService {
     }))
   }
 
-  async getLog(repoPath: string, maxCount: number = 200): Promise<CommitInfo[]> {
+  async getLog(repoPath: string, maxCount: number = 200, skip: number = 0): Promise<CommitInfo[]> {
     const git = this.getGit(repoPath)
-    
+
     const log = await git.log({
       maxCount,
       '--all': null,
+      '--skip': skip,
       format: {
         hash: '%H',
         message: '%s',

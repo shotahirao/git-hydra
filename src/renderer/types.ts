@@ -7,6 +7,7 @@ export interface RepoTab {
   branches: BranchInfo[]
   commits: CommitInfo[]
   visibleCommitCount: number
+  loadedAllCommits: boolean
   selectedCommit: CommitInfo | null
   status: GitStatus | null
   diff: DiffFile[]
