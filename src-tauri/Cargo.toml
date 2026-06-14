@@ -1,6 +1,6 @@
 [package]
 name = "git-hydra"
-version = "2.0.1"
+version = "2.0.2"
 description = "GitHydra - A simple Git GUI client"
 authors = [""]
 license = "MIT"
