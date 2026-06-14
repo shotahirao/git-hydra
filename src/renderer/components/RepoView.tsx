@@ -65,12 +65,40 @@ const RepoView: React.FC<RepoViewProps> = ({
 }) => {
   const commitsRef = useRef<CommitInfo[]>(commits)
 
-  // Poll for updates every 15 seconds
+  // Watch for repository changes instead of polling (fallback to polling if not supported)
   useEffect(() => {
-    const interval = setInterval(() => {
-      onRefresh(repoPath)
-    }, 15000)
-    return () => clearInterval(interval)
+    const hasWatcher = !!window.electronAPI?.onRepoChanged && !!window.electronAPI?.git?.watchRepo
+
+    if (!hasWatcher) {
+      const interval = setInterval(() => {
+        onRefresh(repoPath)
+      }, 15000)
+      return () => clearInterval(interval)
+    }
+
+    const unsubscribe = window.electronAPI.onRepoChanged((changedRepoPath) => {
+      if (changedRepoPath === repoPath) {
+        onRefresh(repoPath)
+      }
+    })
+
+    let watcherActive = false
+    const setupWatcher = async () => {
+      try {
+        await window.electronAPI.git.watchRepo(repoPath)
+        watcherActive = true
+      } catch (err) {
+        console.error('Failed to watch repo:', repoPath, err)
+      }
+    }
+    setupWatcher()
+
+    return () => {
+      unsubscribe()
+      if (watcherActive) {
+        window.electronAPI.git.unwatchRepo(repoPath).catch(() => {})
+      }
+    }
   }, [repoPath, onRefresh])
 
   const handleCommitSelect = useCallback(async (commit: CommitInfo) => {

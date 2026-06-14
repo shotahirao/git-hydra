@@ -2,9 +2,15 @@ import simpleGit, { SimpleGit } from 'simple-git'
 import { CommitInfo, BranchInfo, FileStatus, GitStatus, DiffFile, DiffHunk, DiffLine, RepoInfo } from '@git-types/git'
 import fs from 'node:fs'
 import path from 'node:path'
+import type { FSWatcher } from 'chokidar'
+
+const WATCH_DEBOUNCE_MS = 500
 
 class GitService {
   private repos: Map<string, SimpleGit> = new Map()
+  private watchers: Map<string, FSWatcher> = new Map()
+  private changeCallbacks: Map<string, Set<(repoPath: string) => void>> = new Map()
+  private debounceTimers: Map<string, NodeJS.Timeout> = new Map()
 
   private getGit(repoPath: string): SimpleGit {
     const git = this.repos.get(repoPath)
@@ -47,6 +53,76 @@ class GitService {
 
   closeRepo(repoPath: string): void {
     this.repos.delete(repoPath)
+    this.unwatchRepo(repoPath)
+  }
+
+  async watchRepo(repoPath: string, callback: (repoPath: string) => void): Promise<void> {
+    if (!this.watchers.has(repoPath)) {
+      const { default: chokidarModule } = await import('chokidar')
+      const gitDir = path.join(repoPath, '.git')
+      const watcher = chokidarModule.watch(
+        [
+          path.join(gitDir, 'HEAD'),
+          path.join(gitDir, 'index'),
+          path.join(gitDir, 'refs', 'heads'),
+          path.join(gitDir, 'refs', 'remotes'),
+          path.join(gitDir, 'logs', 'HEAD')
+        ],
+        {
+          ignoreInitial: true,
+          persistent: true,
+          depth: 1
+        }
+      )
+
+      watcher.on('all', () => {
+        this.handleRepoChange(repoPath)
+      })
+
+      this.watchers.set(repoPath, watcher)
+      this.changeCallbacks.set(repoPath, new Set())
+    }
+
+    this.changeCallbacks.get(repoPath)!.add(callback)
+  }
+
+  unwatchRepo(repoPath: string, callback?: (repoPath: string) => void): void {
+    const callbacks = this.changeCallbacks.get(repoPath)
+    if (callbacks) {
+      if (callback) {
+        callbacks.delete(callback)
+      }
+      if (callbacks.size === 0 || !callback) {
+        const watcher = this.watchers.get(repoPath)
+        if (watcher) {
+          watcher.close()
+          this.watchers.delete(repoPath)
+        }
+        this.changeCallbacks.delete(repoPath)
+        const timer = this.debounceTimers.get(repoPath)
+        if (timer) {
+          clearTimeout(timer)
+          this.debounceTimers.delete(repoPath)
+        }
+      }
+    }
+  }
+
+  private handleRepoChange(repoPath: string): void {
+    const existingTimer = this.debounceTimers.get(repoPath)
+    if (existingTimer) {
+      clearTimeout(existingTimer)
+    }
+
+    const timer = setTimeout(() => {
+      this.debounceTimers.delete(repoPath)
+      const callbacks = this.changeCallbacks.get(repoPath)
+      if (callbacks) {
+        callbacks.forEach((cb) => cb(repoPath))
+      }
+    }, WATCH_DEBOUNCE_MS)
+
+    this.debounceTimers.set(repoPath, timer)
   }
 
   async getStatus(repoPath: string): Promise<GitStatus> {

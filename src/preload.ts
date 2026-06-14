@@ -3,6 +3,7 @@ import { contextBridge, ipcRenderer } from 'electron'
 export interface ElectronAPI {
   platform: string
   openDirectory: () => Promise<string | null>
+  onRepoChanged: (callback: (repoPath: string) => void) => () => void
   config: {
     getRecentRepos: () => Promise<string[]>
     addRecentRepo: (repoPath: string) => Promise<void>
@@ -13,6 +14,8 @@ export interface ElectronAPI {
   git: {
     isValidRepo: (repoPath: string) => Promise<boolean>
     openRepo: (repoPath: string) => Promise<any>
+    watchRepo: (repoPath: string) => Promise<void>
+    unwatchRepo: (repoPath: string) => Promise<void>
     closeRepo: (repoPath: string) => Promise<any>
     getStatus: (repoPath: string) => Promise<any>
     getBranches: (repoPath: string) => Promise<any>
@@ -41,6 +44,13 @@ const api: ElectronAPI = {
   openDirectory: async () => {
     return await ipcRenderer.invoke('dialog:openDirectory')
   },
+  onRepoChanged: (callback: (repoPath: string) => void) => {
+    const handler = (_: any, repoPath: string) => callback(repoPath)
+    ipcRenderer.on('git:repoChanged', handler)
+    return () => {
+      ipcRenderer.removeListener('git:repoChanged', handler)
+    }
+  },
   config: {
     getRecentRepos: () => ipcRenderer.invoke('config:getRecentRepos'),
     addRecentRepo: (repoPath: string) => ipcRenderer.invoke('config:addRecentRepo', repoPath),
@@ -52,6 +62,8 @@ const api: ElectronAPI = {
     isValidRepo: (repoPath: string) => ipcRenderer.invoke('git:isValidRepo', repoPath),
     openRepo: (repoPath: string) => ipcRenderer.invoke('git:openRepo', repoPath),
     closeRepo: (repoPath: string) => ipcRenderer.invoke('git:closeRepo', repoPath),
+    watchRepo: (repoPath: string) => ipcRenderer.invoke('git:watchRepo', repoPath),
+    unwatchRepo: (repoPath: string) => ipcRenderer.invoke('git:unwatchRepo', repoPath),
     getStatus: (repoPath: string) => ipcRenderer.invoke('git:getStatus', repoPath),
     getBranches: (repoPath: string) => ipcRenderer.invoke('git:getBranches', repoPath),
     getLog: (repoPath: string, maxCount?: number, skip?: number) => ipcRenderer.invoke('git:getLog', repoPath, maxCount, skip),

@@ -141,6 +141,27 @@ ipcMain.handle('git:closeRepo', async (_, repoPath: string) => {
   gitService.closeRepo(repoPath)
 })
 
+const repoWatchCallbacks = new Map<string, (repoPath: string) => void>()
+
+ipcMain.handle('git:watchRepo', async (_, repoPath: string) => {
+  if (repoWatchCallbacks.has(repoPath)) return
+  const callback = (changedRepoPath: string) => {
+    BrowserWindow.getAllWindows().forEach((window) => {
+      window.webContents.send('git:repoChanged', changedRepoPath)
+    })
+  }
+  repoWatchCallbacks.set(repoPath, callback)
+  await gitService.watchRepo(repoPath, callback)
+})
+
+ipcMain.handle('git:unwatchRepo', async (_, repoPath: string) => {
+  const callback = repoWatchCallbacks.get(repoPath)
+  if (callback) {
+    gitService.unwatchRepo(repoPath, callback)
+    repoWatchCallbacks.delete(repoPath)
+  }
+})
+
 ipcMain.handle('git:getStatus', async (_, repoPath: string) => {
   return await gitService.getStatus(repoPath)
 })
