@@ -103,6 +103,7 @@ pub struct DiffLine {
 }
 
 #[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct DiffHunk {
     pub old_start: i32,
     pub old_lines: i32,
@@ -114,7 +115,7 @@ pub struct DiffHunk {
 #[derive(Debug, Clone, Serialize)]
 pub struct DiffFile {
     pub path: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "oldPath", skip_serializing_if = "Option::is_none")]
     pub old_path: Option<String>,
     pub status: String,
     pub hunks: Vec<DiffHunk>,

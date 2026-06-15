@@ -24,6 +24,11 @@ function createEmptyTab(repoPath: string): RepoTab {
     selectedCommit: null,
     status: null,
     diff: [],
+    diffViewer: {
+      activeTab: 'history',
+      files: [],
+      title: ''
+    },
     loading: false,
     error: ''
   }
@@ -266,6 +271,91 @@ function App(): JSX.Element {
       } catch (err: any) {
         updateTab(tab.id, (t) => ({ ...t, error: err.message || 'Failed to load diff', loading: false }))
       }
+    },
+    [updateTab]
+  )
+
+  const handleOpenDiffViewerFromCommit = useCallback(
+    (repoPath: string, filePath: string) => {
+      const tab = tabsRef.current.find((t) => t.repoPath === repoPath)
+      if (!tab || !tab.selectedCommit) return
+
+      const selectedFile = tab.diff.find((f) => f.path === filePath)
+      const files = selectedFile ? [selectedFile] : tab.diff
+
+      updateTab(tab.id, (t) => ({
+        ...t,
+        diffViewer: {
+          activeTab: 'diff',
+          files,
+          title: tab.selectedCommit?.message.split('\n')[0] || 'Commit Diff',
+          initialSelectedPath: selectedFile ? selectedFile.path : undefined
+        }
+      }))
+    },
+    [updateTab]
+  )
+
+  const handleOpenDiffViewerFromStatus = useCallback(
+    async (repoPath: string, filePath: string, isStaged: boolean) => {
+      const tab = tabsRef.current.find((t) => t.repoPath === repoPath)
+      if (!tab) return
+
+      try {
+        const diffData = isStaged
+          ? await window.electronAPI.git.getStagedDiff(repoPath, filePath)
+          : await window.electronAPI.git.getWorkingDiff(repoPath, filePath)
+
+        updateTab(tab.id, (t) => ({
+          ...t,
+          diffViewer: {
+            activeTab: 'diff',
+            files: diffData,
+            title: `${filePath} (${isStaged ? 'Staged' : 'Unstaged'})`,
+            initialSelectedPath: filePath
+          }
+        }))
+      } catch (err: any) {
+        updateTab(tab.id, (t) => ({
+          ...t,
+          error: err.message || 'Failed to load diff',
+          diffViewer: {
+            activeTab: 'history',
+            files: [],
+            title: ''
+          }
+        }))
+      }
+    },
+    [updateTab]
+  )
+
+  const handleCloseDiffViewer = useCallback(
+    (repoPath: string) => {
+      const tab = tabsRef.current.find((t) => t.repoPath === repoPath)
+      if (!tab) return
+      updateTab(tab.id, (t) => ({
+        ...t,
+        diffViewer: {
+          ...t.diffViewer,
+          activeTab: 'history'
+        }
+      }))
+    },
+    [updateTab]
+  )
+
+  const handleSetDiffTab = useCallback(
+    (repoPath: string, tab: 'history' | 'diff') => {
+      const repoTab = tabsRef.current.find((t) => t.repoPath === repoPath)
+      if (!repoTab) return
+      updateTab(repoTab.id, (t) => ({
+        ...t,
+        diffViewer: {
+          ...t.diffViewer,
+          activeTab: tab
+        }
+      }))
     },
     [updateTab]
   )
@@ -569,6 +659,7 @@ function App(): JSX.Element {
               selectedCommit={tab.selectedCommit}
               status={tab.status}
               diff={tab.diff}
+              diffViewer={tab.diffViewer}
               loading={tab.loading}
               error={tab.error}
               onRefresh={refreshData}
@@ -587,6 +678,10 @@ function App(): JSX.Element {
               onFetch={handleFetch}
               onCreateBranch={handleCreateBranch}
               onClearError={handleClearError}
+              onOpenDiffViewerFromCommit={handleOpenDiffViewerFromCommit}
+              onOpenDiffViewerFromStatus={handleOpenDiffViewerFromStatus}
+              onCloseDiffViewer={handleCloseDiffViewer}
+              onSetDiffTab={handleSetDiffTab}
             />
           </div>
         ))}

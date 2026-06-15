@@ -1,9 +1,11 @@
 import React, { useCallback, useEffect } from 'react'
 import type { CommitInfo, BranchInfo, GitStatus, DiffFile } from '@git-types/git'
+import type { DiffViewerState } from '../types'
 import BranchList from './BranchList'
 import CommitGraph from './CommitGraph'
 import CommitDetail from './CommitDetail'
 import StatusPanel from './StatusPanel'
+import DiffViewer from './DiffViewer'
 
 interface RepoViewProps {
   repoPath: string
@@ -15,6 +17,7 @@ interface RepoViewProps {
   selectedCommit: CommitInfo | null
   status: GitStatus | null
   diff: DiffFile[]
+  diffViewer: DiffViewerState
   loading: boolean
   error: string
   onRefresh: (repoPath: string) => Promise<void>
@@ -33,6 +36,10 @@ interface RepoViewProps {
   onFetch: (repoPath: string) => Promise<void>
   onCreateBranch: (repoPath: string, branchName: string) => Promise<void>
   onClearError: (repoPath: string) => void
+  onOpenDiffViewerFromCommit: (repoPath: string, filePath: string) => void
+  onOpenDiffViewerFromStatus: (repoPath: string, filePath: string, isStaged: boolean) => void
+  onCloseDiffViewer: (repoPath: string) => void
+  onSetDiffTab: (repoPath: string, tab: 'history' | 'diff') => void
 }
 
 const RepoView: React.FC<RepoViewProps> = ({
@@ -44,6 +51,7 @@ const RepoView: React.FC<RepoViewProps> = ({
   selectedCommit,
   status,
   diff,
+  diffViewer,
   loading,
   error,
   onRefresh,
@@ -61,7 +69,11 @@ const RepoView: React.FC<RepoViewProps> = ({
   onPull,
   onFetch,
   onCreateBranch,
-  onClearError
+  onClearError,
+  onOpenDiffViewerFromCommit,
+  onOpenDiffViewerFromStatus,
+  onCloseDiffViewer,
+  onSetDiffTab
 }) => {
   // Watch for repository changes instead of polling (fallback to polling if not supported)
   useEffect(() => {
@@ -102,6 +114,27 @@ const RepoView: React.FC<RepoViewProps> = ({
   const handleCommitSelect = useCallback(async (commit: CommitInfo) => {
     onCommitSelect(repoPath, commit)
   }, [repoPath, onCommitSelect])
+
+  const handleOpenDiffViewerFromCommit = useCallback(
+    (filePath: string) => {
+      onOpenDiffViewerFromCommit(repoPath, filePath)
+    },
+    [repoPath, onOpenDiffViewerFromCommit]
+  )
+
+  const handleOpenDiffViewerFromStatus = useCallback(
+    (filePath: string, isStaged: boolean) => {
+      onOpenDiffViewerFromStatus(repoPath, filePath, isStaged)
+    },
+    [repoPath, onOpenDiffViewerFromStatus]
+  )
+
+  const handleSetDiffTab = useCallback(
+    (tab: 'history' | 'diff') => {
+      onSetDiffTab(repoPath, tab)
+    },
+    [repoPath, onSetDiffTab]
+  )
 
   const handleStage = useCallback(async (filePaths: string[]) => {
     await onStage(repoPath, filePaths)
@@ -234,18 +267,50 @@ const RepoView: React.FC<RepoViewProps> = ({
           />
         </div>
 
-        {/* Center: Commit Graph */}
+        {/* Center: Commit Graph / Diff tabs */}
         <div className="flex-1 border-r border-gray-200 flex flex-col min-w-0">
-          <CommitGraph
-            commits={commits}
-            visibleCommitCount={visibleCommitCount}
-            loadedAllCommits={loadedAllCommits}
-            selectedCommit={selectedCommit}
-            currentBranch={status?.current}
-            loading={loading}
-            onCommitSelect={handleCommitSelect}
-            onLoadMore={() => onLoadMoreCommits(repoPath)}
-          />
+          <div className="flex border-b border-gray-200 bg-gray-100 flex-shrink-0">
+            <button
+              onClick={() => handleSetDiffTab('history')}
+              className={`px-4 py-2 text-xs font-semibold transition ${
+                diffViewer.activeTab === 'history'
+                  ? 'bg-white text-blue-700 border-t-2 border-t-blue-600'
+                  : 'text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              Commit History
+            </button>
+            <button
+              onClick={() => handleSetDiffTab('diff')}
+              className={`px-4 py-2 text-xs font-semibold transition ${
+                diffViewer.activeTab === 'diff'
+                  ? 'bg-white text-blue-700 border-t-2 border-t-blue-600'
+                  : 'text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              Diff
+            </button>
+          </div>
+
+          {diffViewer.activeTab === 'diff' ? (
+            <DiffViewer
+              files={diffViewer.files}
+              title={diffViewer.title}
+              initialSelectedPath={diffViewer.initialSelectedPath}
+              onClose={() => onCloseDiffViewer(repoPath)}
+            />
+          ) : (
+            <CommitGraph
+              commits={commits}
+              visibleCommitCount={visibleCommitCount}
+              loadedAllCommits={loadedAllCommits}
+              selectedCommit={selectedCommit}
+              currentBranch={status?.current}
+              loading={loading}
+              onCommitSelect={handleCommitSelect}
+              onLoadMore={() => onLoadMoreCommits(repoPath)}
+            />
+          )}
         </div>
 
         {/* Right: Commit Detail / Diff */}
@@ -254,12 +319,13 @@ const RepoView: React.FC<RepoViewProps> = ({
             commit={selectedCommit}
             diff={diff}
             loading={loading}
+            onOpenDiffViewer={handleOpenDiffViewerFromCommit}
           />
         </div>
       </div>
 
       {/* Bottom: Status Panel */}
-      <div className="h-96 border-t border-gray-200 flex-shrink-0">
+      <div className="h-64 border-t border-gray-200 flex-shrink-0">
         <StatusPanel
           status={status}
           loading={loading}
@@ -267,8 +333,10 @@ const RepoView: React.FC<RepoViewProps> = ({
           onStage={handleStage}
           onUnstage={handleUnstage}
           onCommit={handleCommit}
+          onOpenDiffViewer={handleOpenDiffViewerFromStatus}
         />
       </div>
+
     </div>
   )
 }

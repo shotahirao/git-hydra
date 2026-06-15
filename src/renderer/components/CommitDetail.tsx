@@ -5,9 +5,10 @@ interface CommitDetailProps {
   commit: CommitInfo | null
   diff: DiffFile[]
   loading: boolean
+  onOpenDiffViewer: (filePath: string) => void
 }
 
-const CommitDetail: React.FC<CommitDetailProps> = ({ commit, diff, loading }) => {
+const CommitDetail: React.FC<CommitDetailProps> = ({ commit, diff, loading, onOpenDiffViewer }) => {
   if (!commit) {
     return (
       <div className="flex flex-col h-full">
@@ -63,10 +64,11 @@ const CommitDetail: React.FC<CommitDetailProps> = ({ commit, diff, loading }) =>
         )}
       </div>
 
-      {/* Diff */}
+      {/* File list */}
       <div className="flex-1 overflow-y-auto">
-        <div className="px-3 py-2 bg-gray-100 border-b border-gray-200 text-xs font-semibold text-gray-600">
-          Changed Files ({diff.length})
+        <div className="px-3 py-2 bg-gray-100 border-b border-gray-200 text-xs font-semibold text-gray-600 flex justify-between items-center">
+          <span>Changed Files ({diff.length})</span>
+          <span className="text-[10px] text-gray-400 font-normal">Click a file to view diff</span>
         </div>
 
         {loading && diff.length === 0 ? (
@@ -79,38 +81,40 @@ const CommitDetail: React.FC<CommitDetailProps> = ({ commit, diff, loading }) =>
             {diff.length === 0 && (
               <div className="p-3 text-sm text-gray-500">No changes to display</div>
             )}
-                {diff.map((file, fileIndex) => (
-              <div key={fileIndex} className="border-b border-gray-200">
-                <div className={`px-3 py-1.5 text-xs font-medium ${
-                  file.status === 'added' ? 'bg-green-50 text-green-700' :
-                  file.status === 'deleted' ? 'bg-red-50 text-red-700' :
-                  'bg-gray-50 text-gray-700'
-                }`}>
-                  {file.path}
-                  <span className="ml-2 text-xs opacity-60">({file.status})</span>
-                </div>
+            {diff.map((file) => {
+              const statusColor =
+                file.status === 'added'
+                  ? 'bg-green-100 text-green-700'
+                  : file.status === 'deleted'
+                    ? 'bg-red-100 text-red-700'
+                    : 'bg-blue-100 text-blue-700'
+              const statusLabel =
+                file.status === 'added'
+                  ? 'A'
+                  : file.status === 'deleted'
+                    ? 'D'
+                    : file.status === 'renamed'
+                      ? 'R'
+                      : file.status === 'copied'
+                        ? 'C'
+                        : 'M'
 
-                {file.hunks.map((hunk, hunkIndex) => (
-                  <div key={hunkIndex} className="text-xs">
-                    <div className="px-3 py-0.5 bg-gray-100 text-gray-500 font-mono text-[10px]">
-                      {hunk.lines[0]?.content}
-                    </div>
-                    {hunk.lines.slice(1).map((line, lineIndex) => (
-                      <div
-                        key={lineIndex}
-                        className={`px-3 py-0.5 font-mono whitespace-pre ${
-                          line.type === 'add' ? 'bg-green-50 text-green-800' :
-                          line.type === 'del' ? 'bg-red-50 text-red-800' :
-                          'text-gray-700'
-                        }`}
-                      >
-                        {line.content}
-                      </div>
-                    ))}
-                  </div>
-                ))}
-              </div>
-            ))}
+              return (
+                <button
+                  key={file.path}
+                  onClick={() => onOpenDiffViewer(file.path)}
+                  className="w-full text-left px-3 py-2 flex items-center space-x-2 hover:bg-blue-50 transition border-b border-gray-100"
+                  title="Click to view diff"
+                >
+                  <span
+                    className={`text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded ${statusColor}`}
+                  >
+                    {statusLabel}
+                  </span>
+                  <span className="text-xs text-gray-700 truncate flex-1">{file.path}</span>
+                </button>
+              )
+            })}
           </>
         )}
       </div>
