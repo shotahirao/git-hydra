@@ -1,4 +1,4 @@
-use chrono::{DateTime, FixedOffset, TimeZone};
+use chrono::{DateTime, FixedOffset, Local, TimeZone};
 use git2::{
     BranchType, Commit, CredentialType, Cred, Diff, DiffOptions, Error as Git2Error, FetchOptions,
     PushOptions, RemoteCallbacks, Repository, StatusOptions, StatusShow, WorktreeAddOptions,
@@ -60,6 +60,8 @@ pub struct CommitInfo {
     pub column: Option<i32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub is_merge: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub is_uncommitted: Option<bool>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -313,7 +315,57 @@ impl GitService {
             commits.push(commit_to_info(&commit, &repo)?);
         }
 
+        // Prepend an "Uncommitted changes" node at the top of the first page
+        // when the working tree or index has changes.
+        if skip == 0 {
+            if let Some(uncommitted) = self.build_uncommitted_commit_info(&repo)? {
+                commits.insert(0, uncommitted);
+                // Keep pagination consistent: if we added a synthetic node, drop
+                // the last real commit when the list was already at max_count.
+                if commits.len() > max_count {
+                    commits.pop();
+                }
+            }
+        }
+
         Ok(commits)
+    }
+
+    fn has_uncommitted_changes(&self, repo: &Repository) -> GitResult<bool> {
+        let mut opts = StatusOptions::new();
+        opts.include_untracked(true)
+            .recurse_untracked_dirs(true)
+            .renames_index_to_workdir(true)
+            .renames_head_to_index(true)
+            .show(StatusShow::IndexAndWorkdir);
+
+        let statuses = repo.statuses(Some(&mut opts))?;
+        Ok(!statuses.is_empty())
+    }
+
+    fn build_uncommitted_commit_info(&self, repo: &Repository) -> GitResult<Option<CommitInfo>> {
+        if !self.has_uncommitted_changes(repo)? {
+            return Ok(None);
+        }
+
+        let head_oid = repo.head().ok().and_then(|h| h.target());
+        let parents = head_oid.map(|oid| vec![oid.to_string()]).unwrap_or_default();
+
+        let now = Local::now();
+
+        Ok(Some(CommitInfo {
+            hash: "__UNCOMMITTED__".to_string(),
+            message: "Uncommitted changes".to_string(),
+            author_name: "Working Tree".to_string(),
+            author_email: "".to_string(),
+            date: now.to_rfc3339(),
+            parents,
+            refs: "".to_string(),
+            branch: None,
+            column: None,
+            is_merge: Some(false),
+            is_uncommitted: Some(true),
+        }))
     }
 
     pub fn get_diff(
@@ -373,6 +425,19 @@ impl GitService {
         commit_hash: &str,
     ) -> GitResult<Vec<DiffFile>> {
         self.get_diff(repo_path, Some(commit_hash), None)
+    }
+
+    pub fn get_uncommitted_diff(
+        &self,
+        repo_path: &str,
+        file_path: Option<&str>,
+    ) -> GitResult<Vec<DiffFile>> {
+        let repo = self.get_repo(repo_path)?;
+        let head = repo.head()?.peel_to_tree()?;
+        let mut opts = DiffOptions::new();
+        apply_pathspec(&mut opts, file_path);
+        let diff = repo.diff_tree_to_workdir(Some(&head), Some(&mut opts))?;
+        diff_to_files(&diff)
     }
 
     pub fn stage(&self, repo_path: &str, file_paths: &[String]) -> GitResult<()> {
@@ -734,6 +799,7 @@ fn commit_to_info(commit: &Commit, repo: &Repository) -> GitResult<CommitInfo> {
         branch: None,
         column: None,
         is_merge: Some(commit.parent_count() > 1),
+        is_uncommitted: None,
     })
 }
 

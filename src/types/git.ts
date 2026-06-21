@@ -10,6 +10,7 @@ export interface CommitInfo {
   // Graph layout info
   column?: number
   isMerge?: boolean
+  isUncommitted?: boolean
 }
 
 export interface BranchInfo {

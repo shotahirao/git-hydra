@@ -127,6 +127,12 @@ export const git = {
   ): Promise<DiffFile[]> => {
     return await invoke<DiffFile[]>('git_get_commit_diff', { repoPath, commitHash })
   },
+  getUncommittedDiff: async (
+    repoPath: string,
+    filePath?: string
+  ): Promise<DiffFile[]> => {
+    return await invoke<DiffFile[]>('git_get_uncommitted_diff', { repoPath, filePath })
+  },
   stage: async (repoPath: string, filePaths: string[]): Promise<void> => {
     await invoke('git_stage', { repoPath, filePaths })
   },

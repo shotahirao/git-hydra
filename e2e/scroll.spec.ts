@@ -80,6 +80,7 @@ test.describe('CommitGraph Scroll', () => {
           getWorkingDiff: async () => [],
           getStagedDiff: async () => [],
           getCommitDiff: async () => [],
+          getUncommittedDiff: async () => [],
           stage: async () => {},
           unstage: async () => {},
           commit: async () => '',

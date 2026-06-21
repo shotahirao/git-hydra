@@ -199,6 +199,7 @@ test.describe('Diff Viewer', () => {
           ],
           getStagedDiff: async () => [],
           getCommitDiff: async () => [],
+          getUncommittedDiff: async () => [],
           stage: async () => {},
           unstage: async () => {},
           commit: async () => '',

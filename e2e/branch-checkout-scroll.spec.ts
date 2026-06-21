@@ -97,6 +97,7 @@ test.describe('Branch Checkout Scroll', () => {
           getWorkingDiff: async () => [],
           getStagedDiff: async () => [],
           getCommitDiff: async () => [],
+          getUncommittedDiff: async () => [],
           stage: async () => {},
           unstage: async () => {},
           commit: async () => '',

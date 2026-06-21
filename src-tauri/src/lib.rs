@@ -27,6 +27,7 @@ pub fn run() {
             commands::git_get_working_diff,
             commands::git_get_staged_diff,
             commands::git_get_commit_diff,
+            commands::git_get_uncommitted_diff,
             commands::git_stage,
             commands::git_unstage,
             commands::git_commit,

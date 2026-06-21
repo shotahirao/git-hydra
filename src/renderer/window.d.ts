@@ -43,6 +43,10 @@ export interface TauriAPI {
       repoPath: string,
       commitHash: string
     ) => Promise<DiffFile[]>
+    getUncommittedDiff: (
+      repoPath: string,
+      filePath?: string
+    ) => Promise<DiffFile[]>
     stage: (repoPath: string, filePaths: string[]) => Promise<void>
     unstage: (repoPath: string, filePaths: string[]) => Promise<void>
     commit: (repoPath: string, message: string) => Promise<string>

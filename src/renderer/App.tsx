@@ -124,8 +124,13 @@ function App(): JSX.Element {
             loading: false
           }
 
+          // If the previously selected uncommitted node is gone, fall back to HEAD
+          if (t.selectedCommit?.isUncommitted && !logData.some(c => c.isUncommitted)) {
+            newTab.selectedCommit = null
+          }
+
           // Auto-select HEAD commit for current branch when no commit is selected
-          if (logData.length > 0 && !t.selectedCommit) {
+          if (logData.length > 0 && !newTab.selectedCommit) {
             const currentBranch = statusData.current
             const headCommit = logData.find(c => c.refs.includes(`HEAD -> ${currentBranch}`)) || logData[0]
             newTab.selectedCommit = headCommit
@@ -266,7 +271,9 @@ function App(): JSX.Element {
       if (!tab) return
       updateTab(tab.id, (t) => ({ ...t, selectedCommit: commit, loading: true, error: '' }))
       try {
-        const diffData = await window.electronAPI.git.getCommitDiff(repoPath, commit.hash)
+        const diffData = commit.isUncommitted
+          ? await window.electronAPI.git.getUncommittedDiff(repoPath)
+          : await window.electronAPI.git.getCommitDiff(repoPath, commit.hash)
         updateTab(tab.id, (t) => ({ ...t, diff: diffData, loading: false }))
       } catch (err: any) {
         updateTab(tab.id, (t) => ({ ...t, error: err.message || 'Failed to load diff', loading: false }))

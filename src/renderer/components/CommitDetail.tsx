@@ -9,6 +9,8 @@ interface CommitDetailProps {
 }
 
 const CommitDetail: React.FC<CommitDetailProps> = ({ commit, diff, loading, onOpenDiffViewer }) => {
+  const isUncommitted = commit?.isUncommitted
+
   if (!commit) {
     return (
       <div className="flex flex-col h-full">
@@ -37,30 +39,34 @@ const CommitDetail: React.FC<CommitDetailProps> = ({ commit, diff, loading, onOp
   return (
     <div className="flex flex-col h-full">
       <div className="px-3 py-2 bg-gray-100 border-b border-gray-200 font-semibold text-sm text-gray-700">
-        Commit Details
+        {isUncommitted ? 'Uncommitted Changes' : 'Commit Details'}
       </div>
       
       {/* Commit Info */}
-      <div className="p-3 border-b border-gray-200 bg-gray-50">
-        <div className="text-sm font-semibold text-gray-800 mb-1 break-words">
+      <div className={`p-3 border-b border-gray-200 ${isUncommitted ? 'bg-amber-50' : 'bg-gray-50'}`}>
+        <div className={`text-sm font-semibold mb-1 break-words ${isUncommitted ? 'text-amber-800' : 'text-gray-800'}`}>
           {commit.message}
         </div>
-        <div className="text-xs text-gray-600 mb-0.5">
-          <span className="font-medium">Author:</span> {commit.author_name} &lt;{commit.author_email}&gt;
-        </div>
-        <div className="text-xs text-gray-600 mb-0.5">
-          <span className="font-medium">Date:</span> {formatDate(commit.date)}
-        </div>
-        <div className="text-xs text-gray-600">
-          <span className="font-medium">Hash:</span> <span className="font-mono">{commit.hash}</span>
-        </div>
-        {commit.parents.length > 0 && (
-          <div className="text-xs text-gray-600">
-            <span className="font-medium">Parents:</span>{' '}
-            {commit.parents.map(p => (
-              <span key={p} className="font-mono mr-2">{p.substring(0, 7)}</span>
-            ))}
-          </div>
+        {!isUncommitted && (
+          <>
+            <div className="text-xs text-gray-600 mb-0.5">
+              <span className="font-medium">Author:</span> {commit.author_name} &lt;{commit.author_email}&gt;
+            </div>
+            <div className="text-xs text-gray-600 mb-0.5">
+              <span className="font-medium">Date:</span> {formatDate(commit.date)}
+            </div>
+            <div className="text-xs text-gray-600">
+              <span className="font-medium">Hash:</span> <span className="font-mono">{commit.hash}</span>
+            </div>
+            {commit.parents.length > 0 && (
+              <div className="text-xs text-gray-600">
+                <span className="font-medium">Parents:</span>{' '}
+                {commit.parents.map(p => (
+                  <span key={p} className="font-mono mr-2">{p.substring(0, 7)}</span>
+                ))}
+              </div>
+            )}
+          </>
         )}
       </div>
 

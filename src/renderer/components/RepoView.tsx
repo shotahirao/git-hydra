@@ -306,6 +306,7 @@ const RepoView: React.FC<RepoViewProps> = ({
               loadedAllCommits={loadedAllCommits}
               selectedCommit={selectedCommit}
               currentBranch={status?.current}
+              status={status}
               loading={loading}
               onCommitSelect={handleCommitSelect}
               onLoadMore={() => onLoadMoreCommits(repoPath)}

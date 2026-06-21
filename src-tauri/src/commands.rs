@@ -168,6 +168,16 @@ pub async fn git_get_commit_diff(
 }
 
 #[tauri::command]
+pub async fn git_get_uncommitted_diff(
+    repo_path: String,
+    file_path: Option<String>,
+) -> Result<Vec<DiffFile>, String> {
+    git_service()
+        .get_uncommitted_diff(&repo_path, file_path.as_deref())
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 pub async fn git_stage(repo_path: String, file_paths: Vec<String>) -> Result<(), String> {
     git_service()
         .stage(&repo_path, &file_paths)

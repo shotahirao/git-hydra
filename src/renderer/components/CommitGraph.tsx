@@ -1,5 +1,5 @@
 import React, { useMemo, useRef, useEffect } from 'react'
-import { CommitInfo } from '@git-types/git'
+import { CommitInfo, GitStatus } from '@git-types/git'
 
 interface CommitGraphProps {
   commits: CommitInfo[]
@@ -7,6 +7,7 @@ interface CommitGraphProps {
   loadedAllCommits: boolean
   selectedCommit: CommitInfo | null
   currentBranch?: string
+  status?: GitStatus | null
   loading: boolean
   onCommitSelect: (commit: CommitInfo) => void
   onLoadMore: () => void
@@ -36,7 +37,7 @@ function getBranchColor(index: number): string {
   return BRANCH_COLORS[index % BRANCH_COLORS.length]
 }
 
-const CommitGraph: React.FC<CommitGraphProps> = ({ commits, visibleCommitCount, loadedAllCommits, selectedCommit, currentBranch, loading, onCommitSelect, onLoadMore }) => {
+const CommitGraph: React.FC<CommitGraphProps> = ({ commits, visibleCommitCount, loadedAllCommits, selectedCommit, currentBranch, status, loading, onCommitSelect, onLoadMore }) => {
   const visibleCommits = useMemo(() => commits.slice(0, visibleCommitCount), [commits, visibleCommitCount])
   const hasMore = visibleCommitCount < commits.length || !loadedAllCommits
 
@@ -125,6 +126,7 @@ const CommitGraph: React.FC<CommitGraphProps> = ({ commits, visibleCommitCount, 
           // Draw curved line
           const midY = (y1 + y2) / 2
           const color = parentRow === 0 ? item.color : getBranchColor(parentItem.column)
+          const isUncommittedConnection = isUncommittedCommit(item.commit)
           
           pathElements.push(
             <path
@@ -133,7 +135,8 @@ const CommitGraph: React.FC<CommitGraphProps> = ({ commits, visibleCommitCount, 
               stroke={color}
               strokeWidth={LINE_STROKE}
               fill="none"
-              opacity={0.7}
+              opacity={isUncommittedConnection ? 0.5 : 0.7}
+              strokeDasharray={isUncommittedConnection ? '4 3' : undefined}
             />
           )
         }
@@ -181,6 +184,15 @@ const CommitGraph: React.FC<CommitGraphProps> = ({ commits, visibleCommitCount, 
     // Only the commit with "HEAD -> branchName" is the actual HEAD commit
     return commit.refs.includes(`HEAD -> ${currentBranch}`)
   }
+
+  function isUncommittedCommit(commit: CommitInfo): boolean {
+    return !!commit.isUncommitted
+  }
+
+  const uncommittedFileCount = useMemo(() => {
+    if (!status) return 0
+    return status.staged.length + status.modified.length + status.untracked.length + status.conflicted.length
+  }, [status])
 
   const scrollContainerRef = useRef<HTMLDivElement>(null)
 
@@ -247,8 +259,10 @@ const CommitGraph: React.FC<CommitGraphProps> = ({ commits, visibleCommitCount, 
           >
             {paths}
             {layout.map((item, index) => {
-              const head = isHeadCommit(item.commit)
+              const uncommitted = isUncommittedCommit(item.commit)
+              const head = !uncommitted && isHeadCommit(item.commit)
               const selected = selectedCommit?.hash === item.commit.hash
+              const dotColor = uncommitted ? '#f59e0b' : selected ? '#2563eb' : item.color
               return (
               <g key={`dot-${item.commit.hash}`}>
                 {head && (
@@ -276,13 +290,14 @@ const CommitGraph: React.FC<CommitGraphProps> = ({ commits, visibleCommitCount, 
                 <circle
                   cx={LEFT_PADDING + item.column * COLUMN_WIDTH + DOT_RADIUS}
                   cy={index * ROW_HEIGHT + ROW_HEIGHT / 2}
-                  r={head ? DOT_RADIUS + 2 : selected ? DOT_RADIUS + 2 : DOT_RADIUS}
-                  fill={selected ? '#2563eb' : item.color}
-                  stroke="white"
-                  strokeWidth={head || selected ? 2 : 1}
+                  r={head || uncommitted ? DOT_RADIUS + 2 : selected ? DOT_RADIUS + 2 : DOT_RADIUS}
+                  fill={uncommitted ? 'white' : selected ? '#2563eb' : item.color}
+                  stroke={dotColor}
+                  strokeWidth={head || selected || uncommitted ? 2.5 : 1}
                 />
                 {/* Branch labels */}
                 {(() => {
+                  if (uncommitted) return null
                   const refs = parseRefs(item.commit.refs)
                   if (refs.branches.length === 0 && refs.tags.length === 0 && !refs.isHead) return null
                   
@@ -345,49 +360,68 @@ const CommitGraph: React.FC<CommitGraphProps> = ({ commits, visibleCommitCount, 
 
           {/* Commit rows */}
           <div className="relative">
-            {layout.map((item) => (
-              <button
-                key={item.commit.hash}
-                id={`commit-row-${item.commit.hash}`}
-                data-selected={selectedCommit?.hash === item.commit.hash ? 'true' : undefined}
-                onClick={() => onCommitSelect(item.commit)}
-                className={`w-full text-left flex items-center hover:bg-gray-100 transition border-b border-gray-50 relative pl-0 ${
-                  selectedCommit?.hash === item.commit.hash
-                    ? 'bg-blue-100/40 commit-selected'
-                    : isHeadCommit(item.commit)
-                      ? 'bg-blue-50/30'
-                      : ''
-                }`}
-                style={{ height: ROW_HEIGHT, paddingLeft: svgWidth + 8 }}
-              >
-                {selectedCommit?.hash === item.commit.hash && (
-                  <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-blue-600 rounded-r" />
-                )}
-                <div className="flex-1 min-w-0 pr-4">
-                  <div className={`text-sm text-gray-800 truncate ${
-                    selectedCommit?.hash === item.commit.hash ? 'font-bold text-blue-900' : 'font-medium'
-                  }`}>
-                    {formatMessage(item.commit.message)}
-                  </div>
-                </div>
-                <div className="flex items-center space-x-3 flex-shrink-0 mr-4">
-                  {isHeadCommit(item.commit) && (
-                    <span className="text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded font-bold">
-                      HEAD
-                    </span>
+            {layout.map((item) => {
+              const uncommitted = isUncommittedCommit(item.commit)
+              const selected = selectedCommit?.hash === item.commit.hash
+              return (
+                <button
+                  key={item.commit.hash}
+                  id={`commit-row-${item.commit.hash}`}
+                  data-selected={selected ? 'true' : undefined}
+                  onClick={() => onCommitSelect(item.commit)}
+                  className={`w-full text-left flex items-center hover:bg-gray-100 transition border-b border-gray-50 relative pl-0 ${
+                    selected
+                      ? 'bg-blue-100/40 commit-selected'
+                      : uncommitted
+                        ? 'bg-amber-50/40'
+                        : isHeadCommit(item.commit)
+                          ? 'bg-blue-50/30'
+                          : ''
+                  }`}
+                  style={{ height: ROW_HEIGHT, paddingLeft: svgWidth + 8 }}
+                >
+                  {selected && (
+                    <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-blue-600 rounded-r" />
                   )}
-                  <span className="text-xs text-gray-500 w-20 text-right truncate">
-                    {item.commit.author_name}
-                  </span>
-                  <span className="text-xs text-gray-400 w-24 text-right">
-                    {formatDate(item.commit.date)}
-                  </span>
-                  <span className="text-xs text-gray-400 font-mono w-16 text-right">
-                    {item.commit.hash.substring(0, 7)}
-                  </span>
-                </div>
-              </button>
-            ))}
+                  <div className="flex-1 min-w-0 pr-4">
+                    <div className={`text-sm truncate ${
+                      selected
+                        ? 'font-bold text-blue-900'
+                        : uncommitted
+                          ? 'font-semibold text-amber-700'
+                          : 'font-medium text-gray-800'
+                    }`}>
+                      {formatMessage(item.commit.message)}
+                      {uncommitted && uncommittedFileCount > 0 && (
+                        <span className="ml-2 text-xs font-normal text-amber-600 bg-amber-100 px-1.5 py-0.5 rounded">
+                          {uncommittedFileCount} file{uncommittedFileCount > 1 ? 's' : ''}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-3 flex-shrink-0 mr-4">
+                    {isHeadCommit(item.commit) && (
+                      <span className="text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded font-bold">
+                        HEAD
+                      </span>
+                    )}
+                    {!uncommitted && (
+                      <>
+                        <span className="text-xs text-gray-500 w-20 text-right truncate">
+                          {item.commit.author_name}
+                        </span>
+                        <span className="text-xs text-gray-400 w-24 text-right">
+                          {formatDate(item.commit.date)}
+                        </span>
+                        <span className="text-xs text-gray-400 font-mono w-16 text-right">
+                          {item.commit.hash.substring(0, 7)}
+                        </span>
+                      </>
+                    )}
+                  </div>
+                </button>
+              )
+            })}
           </div>
 
           {hasMore && (
