@@ -40,19 +40,14 @@ pub fn watch_repo(repo_path: String) -> Result<(), String> {
         git_dir.join("logs").join("HEAD"),
     ];
 
-    let last_event = Arc::new(Mutex::new(None));
-    let last_event_clone = last_event.clone();
     let repo_path_clone = repo_path.clone();
 
     let mut watcher = RecommendedWatcher::new(
         move |res: Result<Event, notify::Error>| {
             if res.is_ok() {
-                let mut last = last_event_clone.lock().unwrap();
-                *last = Some(tokio::time::Instant::now());
                 let repo_path = repo_path_clone.clone();
-                drop(last);
-                tokio::spawn(async move {
-                    tokio::time::sleep(Duration::from_millis(WATCH_DEBOUNCE_MS)).await;
+                std::thread::spawn(move || {
+                    std::thread::sleep(Duration::from_millis(WATCH_DEBOUNCE_MS));
                     if let Some(handle) = app_handle() {
                         let _ = handle.emit("git:repoChanged", repo_path);
                     }
@@ -76,7 +71,7 @@ pub fn watch_repo(repo_path: String) -> Result<(), String> {
         }
     }
 
-    watchers.insert(repo_path, (watcher, last_event));
+    watchers.insert(repo_path, (watcher, Arc::new(Mutex::new(None))));
     Ok(())
 }
 

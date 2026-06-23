@@ -426,7 +426,7 @@ function App(): JSX.Element {
           loading: false
         }))
       } catch (err: any) {
-        updateTab(tab.id, (t) => ({ ...t, error: err.message || 'Failed to checkout', loading: false }))
+        console.error('checkout error:', err); updateTab(tab.id, (t) => ({ ...t, error: typeof err === 'string' ? err : err?.message || String(err) || 'Failed to checkout', loading: false }))
       }
     },
     [updateTab]
@@ -441,7 +441,7 @@ function App(): JSX.Element {
         await window.electronAPI.git.push(repoPath)
         updateTab(tab.id, (t) => ({ ...t, loading: false }))
       } catch (err: any) {
-        updateTab(tab.id, (t) => ({ ...t, error: err.message || 'Failed to push', loading: false }))
+        updateTab(tab.id, (t) => ({ ...t, error: typeof err === 'string' ? err : err?.message || String(err) || 'Failed to push', loading: false }))
       }
     },
     [updateTab]
@@ -456,7 +456,7 @@ function App(): JSX.Element {
         await window.electronAPI.git.pull(repoPath)
         await refreshData(repoPath, tab.id)
       } catch (err: any) {
-        updateTab(tab.id, (t) => ({ ...t, error: err.message || 'Failed to pull', loading: false }))
+        updateTab(tab.id, (t) => ({ ...t, error: typeof err === 'string' ? err : err?.message || String(err) || 'Failed to pull', loading: false }))
       }
     },
     [refreshData, updateTab]
@@ -471,7 +471,7 @@ function App(): JSX.Element {
         await window.electronAPI.git.fetch(repoPath)
         await refreshData(repoPath, tab.id)
       } catch (err: any) {
-        updateTab(tab.id, (t) => ({ ...t, error: err.message || 'Failed to fetch', loading: false }))
+        updateTab(tab.id, (t) => ({ ...t, error: typeof err === 'string' ? err : err?.message || String(err) || 'Failed to fetch', loading: false }))
       }
     },
     [refreshData, updateTab]
@@ -486,7 +486,7 @@ function App(): JSX.Element {
         await window.electronAPI.git.merge(repoPath, branchName)
         await refreshData(repoPath, tab.id)
       } catch (err: any) {
-        updateTab(tab.id, (t) => ({ ...t, error: err.message || 'Failed to merge', loading: false }))
+        updateTab(tab.id, (t) => ({ ...t, error: typeof err === 'string' ? err : err?.message || String(err) || 'Failed to merge', loading: false }))
       }
     },
     [refreshData, updateTab]
@@ -501,7 +501,7 @@ function App(): JSX.Element {
         await window.electronAPI.git.rebase(repoPath, branchName)
         await refreshData(repoPath, tab.id)
       } catch (err: any) {
-        updateTab(tab.id, (t) => ({ ...t, error: err.message || 'Failed to rebase', loading: false }))
+        updateTab(tab.id, (t) => ({ ...t, error: typeof err === 'string' ? err : err?.message || String(err) || 'Failed to rebase', loading: false }))
       }
     },
     [refreshData, updateTab]
@@ -516,7 +516,7 @@ function App(): JSX.Element {
         await window.electronAPI.git.deleteBranch(repoPath, branchName, force)
         await refreshData(repoPath, tab.id)
       } catch (err: any) {
-        updateTab(tab.id, (t) => ({ ...t, error: err.message || 'Failed to delete branch', loading: false }))
+        updateTab(tab.id, (t) => ({ ...t, error: typeof err === 'string' ? err : err?.message || String(err) || 'Failed to delete branch', loading: false }))
       }
     },
     [refreshData, updateTab]
@@ -531,7 +531,7 @@ function App(): JSX.Element {
         await window.electronAPI.git.renameBranch(repoPath, oldName, newName)
         await refreshData(repoPath, tab.id)
       } catch (err: any) {
-        updateTab(tab.id, (t) => ({ ...t, error: err.message || 'Failed to rename branch', loading: false }))
+        updateTab(tab.id, (t) => ({ ...t, error: typeof err === 'string' ? err : err?.message || String(err) || 'Failed to rename branch', loading: false }))
       }
     },
     [refreshData, updateTab]
@@ -546,7 +546,7 @@ function App(): JSX.Element {
         await window.electronAPI.git.createBranch(repoPath, branchName)
         await refreshData(repoPath, tab.id)
       } catch (err: any) {
-        updateTab(tab.id, (t) => ({ ...t, error: err.message || 'Failed to create branch', loading: false }))
+        updateTab(tab.id, (t) => ({ ...t, error: typeof err === 'string' ? err : err?.message || String(err) || 'Failed to create branch', loading: false }))
       }
     },
     [refreshData, updateTab]
