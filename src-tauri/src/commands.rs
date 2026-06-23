@@ -202,10 +202,10 @@ pub async fn git_commit(repo_path: String, message: String) -> Result<String, St
 pub async fn git_checkout(
     repo_path: String,
     target: String,
-    create_branch: bool,
+    create_branch: Option<bool>,
 ) -> Result<(), String> {
     git_service()
-        .checkout(&repo_path, &target, create_branch)
+        .checkout(&repo_path, &target, create_branch.unwrap_or(false))
         .map_err(|e| e.to_string())
 }
 

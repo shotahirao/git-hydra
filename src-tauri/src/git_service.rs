@@ -488,17 +488,27 @@ impl GitService {
 
         if create_branch {
             let head = repo.head()?.peel_to_commit()?;
-            repo.branch(target, &head, false)?;
-            let obj = repo.revparse_single(target)?;
-            repo.checkout_tree(&obj, Some(git2::build::CheckoutBuilder::new().force()))?;
-            repo.set_head(&format!("refs/heads/{target}"))?;
+            repo.branch(target, &head, false)
+                .map_err(|e| GitError::Message(format!("Failed to create branch '{target}': {e}")))?;
+            let obj = repo
+                .revparse_single(target)
+                .map_err(|e| GitError::Message(format!("Branch '{target}' not found: {e}")))?;
+            repo.checkout_tree(&obj, Some(git2::build::CheckoutBuilder::new().force()))
+                .map_err(|e| GitError::Message(format!("Failed to checkout '{target}': {e}")))?;
+            repo.set_head(&format!("refs/heads/{target}"))
+                .map_err(|e| GitError::Message(format!("Failed to update HEAD to '{target}': {e}")))?;
         } else {
-            let obj = repo.revparse_single(target)?;
-            repo.checkout_tree(&obj, Some(git2::build::CheckoutBuilder::new().force()))?;
+            let obj = repo
+                .revparse_single(target)
+                .map_err(|e| GitError::Message(format!("Branch '{target}' not found: {e}")))?;
+            repo.checkout_tree(&obj, Some(git2::build::CheckoutBuilder::new().force()))
+                .map_err(|e| GitError::Message(format!("Failed to checkout '{target}': {e}")))?;
             if repo.find_branch(target, BranchType::Local).is_ok() {
-                repo.set_head(&format!("refs/heads/{target}"))?;
+                repo.set_head(&format!("refs/heads/{target}"))
+                    .map_err(|e| GitError::Message(format!("Failed to update HEAD to '{target}': {e}")))?;
             } else {
-                repo.set_head_detached(obj.id())?;
+                repo.set_head_detached(obj.id())
+                    .map_err(|e| GitError::Message(format!("Failed to update HEAD to '{target}': {e}")))?;
             }
         }
         Ok(())
