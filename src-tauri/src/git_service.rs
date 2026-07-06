@@ -442,9 +442,19 @@ impl GitService {
 
     pub fn stage(&self, repo_path: &str, file_paths: &[String]) -> GitResult<()> {
         let repo = self.get_repo(repo_path)?;
+        let workdir = repo
+            .workdir()
+            .ok_or_else(|| GitError::Message("No working directory".to_string()))?;
         let mut index = repo.index()?;
         for path in file_paths {
-            index.add_path(Path::new(path))?;
+            let rel = Path::new(path);
+            // symlink_metadata: a symlink whose target is gone still exists in
+            // the workdir and must be added, not removed.
+            if workdir.join(rel).symlink_metadata().is_ok() {
+                index.add_path(rel)?;
+            } else {
+                index.remove_path(rel)?;
+            }
         }
         index.write()?;
         Ok(())
@@ -464,16 +474,23 @@ impl GitService {
         let tree_oid = index.write_tree()?;
         let tree = repo.find_tree(tree_oid)?;
         let sig = repo.signature()?;
-        let parent = repo.head()?.peel_to_commit()?;
 
-        let oid = repo.commit(
-            Some("HEAD"),
-            &sig,
-            &sig,
-            message,
-            &tree,
-            &[&parent],
-        )?;
+        // No HEAD parent on an unborn branch (initial commit); add MERGE_HEAD
+        // as a second parent when committing a merge.
+        let mut parents: Vec<Commit> = Vec::new();
+        if let Ok(head) = repo.head() {
+            parents.push(head.peel_to_commit()?);
+        }
+        if let Ok(merge_head) = repo.find_reference("MERGE_HEAD") {
+            parents.push(merge_head.peel_to_commit()?);
+        }
+        let parent_refs: Vec<&Commit> = parents.iter().collect();
+
+        let oid = repo.commit(Some("HEAD"), &sig, &sig, message, &tree, &parent_refs)?;
+
+        if repo.state() != git2::RepositoryState::Clean {
+            repo.cleanup_state()?;
+        }
         Ok(oid.to_string())
     }
 
@@ -493,16 +510,14 @@ impl GitService {
             let obj = repo
                 .revparse_single(target)
                 .map_err(|e| GitError::Message(format!("Branch '{target}' not found: {e}")))?;
-            repo.checkout_tree(&obj, Some(git2::build::CheckoutBuilder::new().force()))
-                .map_err(|e| GitError::Message(format!("Failed to checkout '{target}': {e}")))?;
+            safe_checkout_tree(&repo, &obj, target)?;
             repo.set_head(&format!("refs/heads/{target}"))
                 .map_err(|e| GitError::Message(format!("Failed to update HEAD to '{target}': {e}")))?;
         } else {
             let obj = repo
                 .revparse_single(target)
                 .map_err(|e| GitError::Message(format!("Branch '{target}' not found: {e}")))?;
-            repo.checkout_tree(&obj, Some(git2::build::CheckoutBuilder::new().force()))
-                .map_err(|e| GitError::Message(format!("Failed to checkout '{target}': {e}")))?;
+            safe_checkout_tree(&repo, &obj, target)?;
             if repo.find_branch(target, BranchType::Local).is_ok() {
                 repo.set_head(&format!("refs/heads/{target}"))
                     .map_err(|e| GitError::Message(format!("Failed to update HEAD to '{target}': {e}")))?;
@@ -729,22 +744,33 @@ impl GitService {
     }
 
     fn ensure_no_lock(&self, repo: &Repository) -> GitResult<()> {
-        let workdir = repo
-            .workdir()
-            .ok_or_else(|| GitError::Message("No working directory".to_string()))?;
-        let lock_file = workdir.join(".git").join("index.lock");
+        // repo.path() resolves the real git dir even for worktrees/submodules
+        // where `.git` is a file. Never delete the lock: it may belong to a
+        // live git process, and removing it can corrupt the index.
+        let lock_file = repo.path().join("index.lock");
         if lock_file.exists() {
-            match std::fs::remove_file(&lock_file) {
-                Ok(_) => Ok(()),
-                Err(_) => Err(GitError::Message(
-                    "Git repository is locked by another process. Please close other Git applications and try again."
-                        .to_string(),
-                )),
-            }
+            Err(GitError::Message(
+                "Git repository is locked by another process. Please close other Git applications and try again."
+                    .to_string(),
+            ))
         } else {
             Ok(())
         }
     }
+}
+
+fn safe_checkout_tree(repo: &Repository, obj: &git2::Object, target: &str) -> GitResult<()> {
+    repo.checkout_tree(obj, Some(git2::build::CheckoutBuilder::new().safe()))
+        .map_err(|e| {
+            if e.code() == git2::ErrorCode::Conflict {
+                GitError::Message(
+                    "Checkout would overwrite uncommitted local changes. Commit or stash them before switching branches."
+                        .to_string(),
+                )
+            } else {
+                GitError::Message(format!("Failed to checkout '{target}': {e}"))
+            }
+        })
 }
 
 fn make_remote_callbacks<'a>() -> RemoteCallbacks<'a> {
