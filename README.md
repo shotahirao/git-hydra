@@ -103,30 +103,37 @@ npm run build
 
 ビルド結果は `src-tauri/target/release/bundle/macos/GitHydra.app` に出力されます。
 
-## リリース版のダウンロード
+## インストール
 
-[GitHub Releases](https://github.com/shotahirao/git-hydra/releases) から最新版をダウンロードできます。
+> 注: リリースビルドは Apple Silicon (aarch64) 専用です。
 
-### macOS でアプリが開けない場合
+### Homebrew（推奨）
 
-現在、GitHydra は Apple Developer ID によるコード署名を行っていないため、macOS の Gatekeeper によってブロックされることがあります。
+```bash
+brew install --cask shotahirao/tap/githydra
+```
+
+GitHydra は Apple による notarization（公証）を行っていませんが、cask がインストール後に検疫属性を自動で除去するため、Gatekeeper の警告なしに起動できます。
+
+### 手動ダウンロード
+
+[GitHub Releases](https://github.com/shotahirao/git-hydra/releases) から最新版の `.dmg` をダウンロードできます。
+
+#### macOS でアプリが開けない場合
+
+現在、GitHydra は Apple Developer ID によるコード署名を行っていないため、手動ダウンロードした場合は macOS の Gatekeeper によってブロックされます。
 
 以下のようなメッセージが表示された場合：
 
 > 「GitHydra」は壊れているため開けません。ゴミ箱に入れる必要があります。
 
- ターミナルで以下のコマンドを実行し、アプリの検疫属性を解除してください：
+ターミナルで以下のコマンドを実行し、アプリの検疫属性を解除してください：
 
 ```bash
-sudo xattr -rd com.apple.quarantine /Applications/GitHydra.app
+xattr -rd com.apple.quarantine /Applications/GitHydra.app
 ```
 
-> 注: `Operation not permitted` と表示される場合は、**System Settings → Privacy & Security → Full Disk Access** から **Terminal** を許可してください。
-
-または、以下の方法でも開けます：
-
-1. アプリを右クリック → 「開く」を選択
-2. System Settings → Privacy & Security →「GitHydra」の「とにかく開く」を許可
+> 注: `Permission denied` と表示される場合は先頭に `sudo` を付けて実行してください。`Operation not permitted` と表示される場合は、**System Settings → Privacy & Security → Full Disk Access** から **Terminal** を許可してください。
 
 ## テスト
 
