@@ -101,6 +101,59 @@ fn c1_lock_file_not_deleted() {
 }
 
 #[test]
+fn remote_branch_checkout_creates_local_tracking_branch() {
+    let (dir, repo) = setup("remote_checkout");
+    let svc = GitService::new();
+    let p = dir.to_str().unwrap();
+
+    write(&dir, "a.txt", "base");
+    svc.stage(p, &["a.txt".into()]).unwrap();
+    svc.commit(p, "base").unwrap();
+    let default_branch = repo.head().unwrap().shorthand().unwrap().to_string();
+
+    // Simulate a fetched remote branch pointing at a second commit.
+    svc.checkout(p, "feature-src", true).unwrap();
+    write(&dir, "b.txt", "remote side");
+    svc.stage(p, &["b.txt".into()]).unwrap();
+    svc.commit(p, "remote commit").unwrap();
+    let tip = repo.head().unwrap().target().unwrap();
+    repo.reference("refs/remotes/origin/feature", tip, false, "fetch")
+        .unwrap();
+    svc.checkout(p, &default_branch, false).unwrap();
+
+    svc.checkout(p, "origin/feature", false).unwrap();
+
+    let fresh = git2::Repository::open(&dir).unwrap();
+    assert!(!fresh.head_detached().unwrap(), "HEAD must not be detached");
+    assert_eq!(
+        fresh.head().unwrap().shorthand().unwrap(),
+        "feature",
+        "must be on the local tracking branch"
+    );
+    assert!(
+        fresh.find_branch("feature", git2::BranchType::Local).is_ok(),
+        "local branch must exist"
+    );
+}
+
+#[test]
+fn commit_hash_checkout_still_detaches() {
+    let (dir, repo) = setup("hash_checkout");
+    let svc = GitService::new();
+    let p = dir.to_str().unwrap();
+
+    write(&dir, "a.txt", "v1");
+    svc.stage(p, &["a.txt".into()]).unwrap();
+    let first = svc.commit(p, "c1").unwrap();
+    write(&dir, "a.txt", "v2");
+    svc.stage(p, &["a.txt".into()]).unwrap();
+    svc.commit(p, "c2").unwrap();
+
+    svc.checkout(p, &first, false).unwrap();
+    assert!(repo.head_detached().unwrap(), "hash checkout should detach");
+}
+
+#[test]
 fn c4_merge_commit_has_two_parents_and_cleans_state() {
     let (dir, repo) = setup("c4_merge");
     let svc = GitService::new();

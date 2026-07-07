@@ -51,8 +51,8 @@ const BranchList: React.FC<BranchListProps> = ({
     return branchList.filter(b => b.name.toLowerCase().includes(query) || b.label.toLowerCase().includes(query))
   }
 
-  const localBranches = filterBranches(branches.filter(b => !b.name.startsWith('remotes/')))
-  const remoteBranches = filterBranches(branches.filter(b => b.name.startsWith('remotes/')))
+  const localBranches = filterBranches(branches.filter(b => !b.remote))
+  const remoteBranches = filterBranches(branches.filter(b => b.remote))
 
   const handleContextMenu = (e: React.MouseEvent, branch: BranchInfo) => {
     e.preventDefault()
@@ -312,7 +312,7 @@ const BranchList: React.FC<BranchListProps> = ({
             </>
           )}
           
-          {onRenameBranch && !contextMenu.branch.name.startsWith('remotes/') && (
+          {onRenameBranch && !contextMenu.branch.remote && (
             <button
               onClick={handleRenameClick}
               className="w-full text-left px-3 py-1.5 text-sm hover:bg-gray-100 transition text-gray-700"
@@ -321,7 +321,7 @@ const BranchList: React.FC<BranchListProps> = ({
             </button>
           )}
           
-          {onDeleteBranch && !contextMenu.branch.name.startsWith('remotes/') && !isCurrentBranch(contextMenu.branch) && (
+          {onDeleteBranch && !contextMenu.branch.remote && !isCurrentBranch(contextMenu.branch) && (
             <>
               <button
                 onClick={() => handleDeleteClick(false)}

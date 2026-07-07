@@ -278,6 +278,10 @@ impl GitService {
         for branch_result in remote_branches {
             let (branch, _) = branch_result?;
             let name = branch.name()?.unwrap_or("?").to_string();
+            // "origin/HEAD" is a pointer, not a checkoutable branch.
+            if name.ends_with("/HEAD") {
+                continue;
+            }
             let remote = name.split_once('/').map(|(remote, _)| remote.to_string());
             let label = name.clone();
             result.push(BranchInfo {
@@ -513,20 +517,53 @@ impl GitService {
             safe_checkout_tree(&repo, &obj, target)?;
             repo.set_head(&format!("refs/heads/{target}"))
                 .map_err(|e| GitError::Message(format!("Failed to update HEAD to '{target}': {e}")))?;
-        } else {
+        } else if repo.find_branch(target, BranchType::Local).is_ok() {
             let obj = repo
                 .revparse_single(target)
                 .map_err(|e| GitError::Message(format!("Branch '{target}' not found: {e}")))?;
             safe_checkout_tree(&repo, &obj, target)?;
-            if repo.find_branch(target, BranchType::Local).is_ok() {
-                repo.set_head(&format!("refs/heads/{target}"))
-                    .map_err(|e| GitError::Message(format!("Failed to update HEAD to '{target}': {e}")))?;
-            } else {
-                repo.set_head_detached(obj.id())
-                    .map_err(|e| GitError::Message(format!("Failed to update HEAD to '{target}': {e}")))?;
+            repo.set_head(&format!("refs/heads/{target}"))
+                .map_err(|e| GitError::Message(format!("Failed to update HEAD to '{target}': {e}")))?;
+        } else if let Some(local_name) = self.remote_branch_local_name(&repo, target) {
+            // A remote branch like "origin/foo": switch to the local tracking
+            // branch, creating it first if needed — like `git switch foo`.
+            if repo.find_branch(&local_name, BranchType::Local).is_err() {
+                let stripped = target.strip_prefix("remotes/").unwrap_or(target);
+                let remote_branch = repo.find_branch(stripped, BranchType::Remote)?;
+                let commit = remote_branch.get().peel_to_commit()?;
+                let mut local = repo
+                    .branch(&local_name, &commit, false)
+                    .map_err(|e| GitError::Message(format!("Failed to create branch '{local_name}': {e}")))?;
+                // Upstream setup can fail (e.g. no remote config); the
+                // checkout itself should still succeed.
+                let _ = local.set_upstream(Some(stripped));
             }
+            let obj = repo.revparse_single(&local_name)?;
+            safe_checkout_tree(&repo, &obj, &local_name)?;
+            repo.set_head(&format!("refs/heads/{local_name}"))
+                .map_err(|e| GitError::Message(format!("Failed to update HEAD to '{local_name}': {e}")))?;
+        } else {
+            // Not a branch (commit hash, tag, ...): detached checkout.
+            let obj = repo
+                .revparse_single(target)
+                .map_err(|e| GitError::Message(format!("Branch '{target}' not found: {e}")))?;
+            safe_checkout_tree(&repo, &obj, target)?;
+            repo.set_head_detached(obj.id())
+                .map_err(|e| GitError::Message(format!("Failed to update HEAD to '{target}': {e}")))?;
         }
         Ok(())
+    }
+
+    /// If `target` names a remote branch ("origin/foo" or "remotes/origin/foo"),
+    /// return the corresponding local branch name ("foo").
+    fn remote_branch_local_name(&self, repo: &Repository, target: &str) -> Option<String> {
+        let stripped = target.strip_prefix("remotes/").unwrap_or(target);
+        repo.find_branch(stripped, BranchType::Remote).ok()?;
+        let (_, local_name) = stripped.split_once('/')?;
+        if local_name.is_empty() || local_name == "HEAD" {
+            return None;
+        }
+        Some(local_name.to_string())
     }
 
     pub fn create_branch(
